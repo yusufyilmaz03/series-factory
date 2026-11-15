@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "series-factory"
+version = "0.1.0"
+description = "AI-assisted series video pipeline: script plan -> frames -> voice -> edit -> check -> publish"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "Pillow>=10",
+]
+
+[project.optional-dependencies]
+# Automatic subtitle placement. Uses an object detector run with onnxruntime.
+# The YOLO11n weights are AGPL-3.0 (Ultralytics) and are NOT shipped with this repo;
+# `series subtitles model` explains how to export them once.
+subtitles = ["numpy>=1.24", "onnxruntime>=1.16"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+series = "series_factory.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["series_factory*"]
+
+[tool.setuptools.package-data]
+series_factory = ["templates/*.md", "templates/series/*", "templates/series/.env.example", "templates/series/docs/*"]

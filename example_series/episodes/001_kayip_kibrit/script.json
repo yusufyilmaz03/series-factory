@@ -1,0 +1,249 @@
+{
+  "format": 3,
+  "episode_no": 1,
+  "slug": "kayip_kibrit",
+  "title": "Kayıp Kibrit Vakası",
+  "genre": "gozlem",
+  "source_idea": "G-01",
+  "target_sec": 60,
+  "hook": "Fenerde bir kibrit kutusu kayboldu ve tek şüpheli benim.",
+  "summary": "Lambacı Teyze'nin kibrit kutusu kaybolur. Bip, fenerin baş güvenlik sorumlusu olarak soruşturma açar ve odadaki herkesi (yani kendini ve bir martıyı) sorgular. Sonunda kutunun Teyze'nin yağmurluk cebinde olduğu ortaya çıkar. Bip raporu imzalar, lamba yanar.",
+  "scenes": [
+    {
+      "no": 1,
+      "duration_sec": 9,
+      "narration": "[dramatic] Saat gece yarısı. Dışarıda yağmur, içeride sessizlik. Fenerde bir kibrit kutusu kayboldu. Ve tek şüpheli, benim.",
+      "dialogue": [],
+      "title_text": "KAYIP KİBRİT VAKASI",
+      "frames": [
+        {
+          "file": "01_kanca.jpg",
+          "motion": "in",
+          "refs": [
+            "BIP",
+            "FENER_ODASI"
+          ],
+          "prompt": "Night, the lamp room. Bip stands alone next to the dark brass lamp, his blue lens eye wide, an empty spot on the wooden shelf behind him. Low angle, dramatic.",
+          "reads": [
+            "Bip lambanın yanında yalnız",
+            "raftaki boşluk"
+          ],
+          "subtitle_pos": "top"
+        }
+      ]
+    },
+    {
+      "no": 2,
+      "duration_sec": 14,
+      "narration": "[official] Ben Bip, fenerin baş güvenlik sorumlusu. Üç yıldır tek bir gece bile nöbeti bırakmadım. Kural bir: lamba her gece yanar. Kural iki: kibrit yerinde durur. Bu gece kural iki çiğnendi, hem de benim nöbetimde.",
+      "dialogue": [
+        {
+          "character": "LAMBACI",
+          "text": "Bip, kibrit nerede?",
+          "at": {
+            "frame_start": "02_teyze.jpg"
+          }
+        }
+      ],
+      "title_text": null,
+      "frames": [
+        {
+          "file": "02_teyze.jpg",
+          "motion": "out",
+          "refs": [
+            "LAMBACI",
+            "BIP",
+            "FENER_ODASI"
+          ],
+          "prompt": "Lambaci in her yellow raincoat holds an unlit lantern and looks down at Bip, one eyebrow raised. Bip salutes stiffly. Medium shot.",
+          "reads": [
+            "Teyze elinde söndürülmüş fenerle",
+            "Bip selam veriyor",
+            "Teyze şüpheli bakıyor"
+          ],
+          "transition": "fade"
+        },
+        {
+          "file": "02b_kural.jpg",
+          "motion": "panR",
+          "refs": [
+            "BIP",
+            "FENER_ODASI",
+            "02_teyze.jpg"
+          ],
+          "prompt": "Close-up of Bip pointing with a tiny metal finger at a hand-written rules sheet pinned on the stone wall, rule two circled in red.",
+          "start_word": "Kural",
+          "reads": [
+            "duvardaki kural kâğıdı",
+            "ikinci kural daire içinde"
+          ]
+        }
+      ]
+    },
+    {
+      "no": 3,
+      "duration_sec": 16,
+      "narration": "[suspicious] Soruşturma başladı. İlk şüpheli, pencerede uyuyan martı. Gözlerini açmadı bile; çok profesyonel. Martı horladı; bu bir itiraf değildi. Ayaklarında kibrit izi yok, cebi de yok. [deadpan] İkinci şüpheli, ben. Kendimi iki saat sorguladım. Hiç çelişkiye düşmedim. Temiz çıktım.",
+      "dialogue": [],
+      "title_text": "SORUŞTURMA",
+      "frames": [
+        {
+          "file": "03_marti.jpg",
+          "motion": "in",
+          "refs": [
+            "BIP",
+            "FENER_ODASI"
+          ],
+          "prompt": "Bip on tiptoe at the rainy window, his lens eye zoomed in on a fat seagull sleeping on the outside ledge. Only one bird in the image.",
+          "reads": [
+            "Bip pencerede",
+            "dışarıda uyuyan martı"
+          ],
+          "transition": "slideleft"
+        },
+        {
+          "file": "03b_ayna.jpg",
+          "motion": "out",
+          "refs": [
+            "BIP",
+            "FENER_ODASI",
+            "03_marti.jpg"
+          ],
+          "prompt": "Bip sits across from his own reflection in the polished brass lamp, like an interrogation, a tiny desk lamp pointed at the reflection.",
+          "start_word": "İkinci",
+          "reads": [
+            "Bip kendi yansımasını sorguluyor"
+          ],
+          "hold": 0.6
+        }
+      ]
+    },
+    {
+      "no": 4,
+      "duration_sec": 15,
+      "narration": "[surprised] Sonra bir ses duydum. Tıkırtı! Teyze'nin yağmurluk cebinden geliyordu. Kutu oradaydı, hep oradaymış. [proudly] Vaka çözüldü. Kibrit bulundu, şüpheliler aklandı. Rapor imzalandı. [warm] Işık yanıyor, Teyze uyuyor. Görev tamam.",
+      "dialogue": [
+        {
+          "character": "LAMBACI",
+          "text": "Aferin sana.",
+          "at": {
+            "after_word": "aklandı."
+          }
+        }
+      ],
+      "title_text": null,
+      "frames": [
+        {
+          "file": "04_cep.jpg",
+          "motion": "fast",
+          "refs": [
+            "LAMBACI",
+            "BIP",
+            "FENER_ODASI"
+          ],
+          "prompt": "Extreme close-up: a small matchbox peeking out of the pocket of Lambaci's yellow raincoat hanging on a hook, Bip's blue lens light shining on it.",
+          "reads": [
+            "yağmurluk cebinde kibrit kutusu"
+          ],
+          "transition": "dissolve",
+          "hold": 0.4
+        },
+        {
+          "file": "04b_kapanis.jpg",
+          "motion": "in",
+          "refs": [
+            "LAMBACI",
+            "BIP",
+            "FENER_ODASI",
+            "04_cep.jpg"
+          ],
+          "prompt": "Wide warm shot: the big lamp shines brightly, Lambaci dozes in an armchair with a blanket, Bip stands guard beside her, rain outside.",
+          "start_word": "Işık",
+          "reads": [
+            "lamba yanıyor",
+            "Teyze uyuyor, Bip nöbette"
+          ],
+          "hold": 1.0
+        }
+      ]
+    }
+  ],
+  "sfx": [
+    {
+      "id": "gece_ruzgar",
+      "prompt": "Soft night wind and rain against old lighthouse windows",
+      "duration": 4,
+      "anchor": {
+        "scene": 1
+      },
+      "offset": 0.0,
+      "volume": 0.35
+    },
+    {
+      "id": "bip_cirp",
+      "prompt": "Tiny cute electronic robot chirp",
+      "duration": 1,
+      "anchor": {
+        "word": "Bip,"
+      },
+      "offset": 0.0,
+      "volume": 0.5
+    },
+    {
+      "id": "marti_horlama",
+      "prompt": "Comedic snoring seagull, short",
+      "duration": 2,
+      "anchor": {
+        "word": "martı."
+      },
+      "offset": 0.1,
+      "volume": 0.4
+    },
+    {
+      "id": "tikirti",
+      "prompt": "Small matchbox rattle, two quick shakes",
+      "duration": 1,
+      "anchor": {
+        "word": "Tıkırtı!"
+      },
+      "offset": 0.0,
+      "volume": 0.6
+    }
+  ],
+  "music": {
+    "id": "muzik_fener_gizem",
+    "prompt": "Gentle mysterious pizzicato and celesta loop, cozy detective mood, instrumental",
+    "duration": 22,
+    "volume": 0.11,
+    "mute": [
+      {
+        "anchor": {
+          "word": "Tıkırtı!"
+        },
+        "offset": -0.2
+      },
+      {
+        "anchor": {
+          "word": "Vaka"
+        },
+        "offset": 0.0
+      }
+    ]
+  },
+  "sponsor_slot": {
+    "scene_no": 4,
+    "description": "sıcak çay / termos markası: Teyze'nin yanındaki termos"
+  },
+  "closing": {
+    "line": "Işık yanıyor, Teyze uyuyor. Görev tamam.",
+    "real_footage_note": ""
+  },
+  "caption": "Fenerde kayıp kibrit vakası. Baş güvenlik sorumlusu iş başında. 🔦",
+  "hashtags": [
+    "#fenerbekcisi",
+    "#robot",
+    "#deniz",
+    "#komik"
+  ],
+  "canon_updates": []
+}

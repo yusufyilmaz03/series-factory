@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "name": "",
+  "lang": "en",
+  "timezone": "UTC",
+  "profile": "vertical_short",
+  "video": {"font": "DejaVu Sans", "target_lufs": -14, "end_fade": 0.4},
+  "narrator": "NARRATOR",
+  "voices": {
+    "NARRATOR": {"name": "your narrator voice", "id": "PUT_ELEVENLABS_VOICE_ID_HERE"}
+  },
+  "tts": {"model": "eleven_v4", "stability": 0.5, "similarity_boost": 0.75},
+  "narration_tts": {"stability": 0.0, "style": 0.4},
+  "references": {},
+  "character_descriptions": {},
+  "location_descriptions": {},
+  "characters": {},
+  "image": {
+    "adapter": "manual",
+    "model": "gemini-3.1-flash-image",
+    "size": "1K",
+    "intro": "Vertical 9:16 cinematic still from a stylized 3D animated feature film.",
+    "style": "Style: stylized 3D animated feature film look, soft cinematic lighting, rich but natural colors.",
+    "expression_suffix": "_EXPR"
+  },
+  "script_writer": {"model": "claude-sonnet-5-5", "max_tokens": 16000},
+  "ideas": {"types": {"R": {"name": "real", "label": "real events"}, "F": {"name": "fiction", "label": "fiction"}}},
+  "docs": {"canon": "characters.md"},
+  "rules": {"emotion_tags": true, "max_hashtags": 5},
+  "publish": {"platforms": ["instagram", "tiktok", "youtube"]}
+}

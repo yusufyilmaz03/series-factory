@@ -1,0 +1,2 @@
+# Deliberate mentions the leak check accepts:  <path glob> :: <regex of the allowed match>
+# Keep this list short; anything new must be a conscious decision. (CLAUDE.md and docs/DEVIR_NOTU.md are local only.)

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Leak check before every commit. Enable once with:  git config core.hooksPath .githooks
+# Real series folders whose private values must never appear here: SERIES_LEAK_SERIES=path1:path2
+exec python3 "$(git rev-parse --show-toplevel)/scripts/leak_check.py" --staged

@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "name": "Fener Bekçisi",
+  "lang": "tr",
+  "timezone": "Europe/Istanbul",
+  "profile": "vertical_short",
+  "video": {"font": "DejaVu Sans", "target_lufs": -14, "end_fade": 0.4},
+  "narrator": "BIP",
+  "voices": {
+    "BIP": {"name": "anlatıcı sesi (örnek)", "id": "PUT_ELEVENLABS_VOICE_ID_HERE"},
+    "LAMBACI": {"name": "yaşlı kadın sesi (örnek)", "id": "PUT_ELEVENLABS_VOICE_ID_HERE"}
+  },
+  "tts": {"model": "eleven_v4", "stability": 0.5, "similarity_boost": 0.75, "language_code": "tr"},
+  "narration_tts": {"stability": 0.0, "style": 0.4},
+  "references": {
+    "BIP": "assets/characters/bip/bip_karakter_sayfasi_v1.jpg",
+    "LAMBACI": "assets/characters/lambaci/lambaci_karakter_sayfasi_v1.jpg",
+    "FENER_ODASI": "assets/backgrounds/fener_odasi/fener_odasi_ana.jpg"
+  },
+  "character_descriptions": {
+    "BIP": "Bip is the small round tin robot with one big blue lens eye and two short antennae",
+    "LAMBACI": "Lambaci is the elderly lighthouse keeper woman with silver braids, round glasses and a yellow raincoat"
+  },
+  "location_descriptions": {
+    "FENER_ODASI": "the round lamp room at the top of an old stone lighthouse, with the big brass lamp in the middle and rain-streaked windows all around"
+  },
+  "characters": {
+    "LAMBACI": {"display_name": "Lambacı", "aliases": ["Lambacı", "[Tt]eyze"]}
+  },
+  "image": {
+    "adapter": "manual",
+    "model": "gemini-3.1-flash-image",
+    "size": "1K",
+    "intro": "Vertical 9:16 cinematic still from a stylized 3D animated feature film.",
+    "style": "Style: stylized 3D animated feature film look, warm lamp light against cold blue night, soft rain, cozy and slightly melancholic.",
+    "expression_suffix": "_EXPR"
+  },
+  "script_writer": {"model": "claude-sonnet-5-5", "max_tokens": 16000},
+  "ideas": {
+    "types": {
+      "G": {"name": "gozlem", "label": "gözlem (fenerde olan küçük şeyler)"},
+      "H": {"name": "hayal", "label": "hayal (Bip'in kafasında büyüyenler)"}
+    }
+  },
+  "docs": {"canon": "karakterler.md", "generated_title_prefix": ""},
+  "context": {"always": ["BIP", "LAMBACI"]},
+  "rules": {
+    "emotion_tags": true,
+    "max_hashtags": 5,
+    "require_sponsor_slot": false,
+    "custom": [
+      {"field": "narration", "pattern": "\\b(lazer|robot isyanı)\\b", "flags": "i",
+       "message": "Bip kavga ya da silah anlatmaz (seri kuralı)"}
+    ]
+  },
+  "publish": {"platforms": ["instagram", "tiktok", "youtube"]},
+  "paths": {"docs": "docs", "episodes": "episodes", "records": "records"}
+}

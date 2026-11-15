@@ -1,0 +1,42 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# model weights (downloaded on first use, never committed)
+*.onnx
+models/
+
+# leftovers from the source pipeline
+_yedek_*/
+_to_delete/
+_tmp_onizleme/
+_tmp_preview/
+
+# series data never lives in this repo (except the fictional example_series)
+episodes/
+!example_series/episodes/
+kayit/
+records/
+!example_series/records/
+Referans/
+GoogleDrive/
+
+# local Claude instructions and handoff notes that name a real series: local only
+CLAUDE.md
+docs/DEVIR_NOTU.md
+
+# local
+.DS_Store
+.claude/settings.local.json
+
+# local, never committed (series-specific extras, notes)
+local/
