@@ -21,7 +21,7 @@ DEFAULT_LAYOUT = {
     "plan": "script.json", "script_md": "script.md",
     "frames": "frames", "audio": "audio", "output": "output", "cover": "cover",
     "narration": "narration", "words": "words.json", "line": "line_{n:02d}",
-    "timing_suffix": "_timing.json", "prompt_dir": "_prompt", "prompts_md": "_prompts.md", "guide": "_guide.md",
+    "timing_suffix": "_timing.json", "prompt_dir": "_prompt", "carousel": "carousel", "prompts_md": "_prompts.md", "guide": "_guide.md",
     "contact": "_contact.jpg", "hf_log": "_higgsfield.json", "old_frames": "_old", "prompt_file": "_prompt.md",
     "records": {"idea": "idea", "idea_group": "idea_group", "todo": "todo", "todo_section": "todo_section"},
     "docs_sync": ".project_sync.json",
@@ -32,6 +32,7 @@ DEFAULT_PATHS = {
     "incoming": "references/_incoming", "upload_staging": "references/_upload", "trash": "_trash",
     "preview": "_preview", "publish_log": "publish/publish.json", "drive_sync": "drive_sync",
     "hf_media": "hf_media.json", "image_usage_log": "assets/_image_usage.jsonl",
+    "schedule": "publish/schedule.json", "views": "views", "exchange": "drive_sync/_exchange",
 }
 
 
@@ -122,9 +123,92 @@ def layout(key, **fmt):
     return v.format(**fmt) if fmt else v
 
 
-def profile():
+def profile(fmt=None):
+    """Format profile of the series, or of one episode format (formats.<key>.profile / profile_overrides)."""
     c = cfg()
-    return profiles.get(c.get("profile", "vertical_short"), c.get("profile_overrides"))
+    f = formats().get(fmt, {}) if fmt else {}
+    over = profiles._merge(c.get("profile_overrides") or {}, f.get("profile_overrides") or {})
+    return profiles.get(f.get("profile") or c.get("profile", "vertical_short"), over)
+
+
+# ---------------------------------------------------------------- episode formats
+def formats():
+    """series.json "formats": {key: {label, folder, output, profile, idea_types, counter, ...}}.
+    A series without formats has one implicit format "episode" that lives directly in episodes/."""
+    f = cfg().get("formats")
+    if f:
+        return f
+    return {"episode": {"label": T("episode", "bölüm"), "folder": "", "output": ["video"], "default": True}}
+
+
+def format_folder(key):
+    f = formats()[key]
+    return f.get("folder", key)
+
+
+def default_format():
+    fs = formats()
+    return next((k for k, f in fs.items() if f.get("default")), next(iter(fs)))
+
+
+def format_outputs(key):
+    o = formats().get(key, {}).get("output", ["video"])
+    return [o] if isinstance(o, str) else list(o)
+
+
+def format_for_idea(code):
+    """Idea code (e.g. 'T-07') -> format key through formats.<key>.idea_types."""
+    m = re.match(r"([A-Z]+)-", code or "")
+    if m:
+        for k, f in formats().items():
+            if m.group(1) in f.get("idea_types", []):
+                return k
+    return None
+
+
+_EP_RE = re.compile(r"\d{3}[a-z]?(_|$)")
+
+
+def episode_folders():
+    """Every episode folder: [(path, format key or None)], in episode-number order.
+    Episodes live in episodes/<format folder>/NNN_slug; a folder directly in episodes/ is unfiled (format None)."""
+    base = episodes_dir()
+    if not os.path.isdir(base):
+        return []
+    by_folder = {format_folder(k): k for k in formats() if format_folder(k)}
+    out = []
+    for d in os.listdir(base):
+        p = os.path.join(base, d)
+        if not os.path.isdir(p):
+            continue
+        if _EP_RE.match(d):
+            out.append((p, None))
+        elif d in by_folder:
+            out += [(os.path.join(p, x), by_folder[d]) for x in os.listdir(p)
+                    if _EP_RE.match(x) and os.path.isdir(os.path.join(p, x))]
+    return sorted(out, key=lambda x: os.path.basename(x[0]))
+
+
+def episode_format(ep, plan=None):
+    """Format of an episode: its folder, else plan "episode_format", else the idea type, else the default format."""
+    for p, k in episode_folders():
+        if os.path.abspath(p) == os.path.abspath(ep) and k:
+            return k
+    if plan is None and os.path.exists(plan_path(ep)):
+        try:
+            plan = load_plan(ep)
+        except Exception:
+            plan = {}
+    plan = plan or {}
+    if plan.get("episode_format") in formats():
+        return plan["episode_format"]
+    return format_for_idea(plan.get("source_idea")) or default_format()
+
+
+def new_episode_dir(no, slug, fmt=None):
+    """Where a new episode goes: episodes/<format folder>/NNN_slug."""
+    sub = format_folder(fmt) if fmt and fmt in formats() else ""
+    return os.path.join(episodes_dir(), sub, f"{int(no):03d}_{slug}") if sub else os.path.join(episodes_dir(), f"{int(no):03d}_{slug}")
 
 
 def narrator():
@@ -218,10 +302,10 @@ def episode_dir(e):
     """'001', '001_slug' or a full path -> episode folder."""
     if os.path.isdir(e):
         return os.path.abspath(e)
-    base = episodes_dir()
-    for d in sorted(os.listdir(base)) if os.path.isdir(base) else []:
+    for p, _ in episode_folders():
+        d = os.path.basename(p)
         if d == e or d.startswith(e + "_"):
-            return os.path.join(base, d)
+            return p
     sys.exit(T(f"Episode not found: {e}", f"Bölüm bulunamadı: {e}"))
 
 
@@ -231,7 +315,7 @@ def episode_no(folder):
 
 
 def ep_path(ep, kind, *more):
-    """Path inside an episode: kind = frames | audio | output | cover."""
+    """Path inside an episode: kind = frames | audio | output | cover | carousel."""
     return os.path.join(ep, layout(kind), *more)
 
 

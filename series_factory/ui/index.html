@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>series-factory</title>
+<style>
+:root{--bg:#f6f5f2;--panel:#fff;--ink:#1d1d22;--mute:#6b6b75;--line:#e4e2dc;--accent:#d9822b;--ok:#2f8f5b;--warn:#c0392b;--plan:#5a6acf;
+--f0:#d9822b;--f1:#3d8bd9;--f2:#8e5bd0;--f3:#2f9e8f;--f4:#c9497a;--f5:#7a8a2e}
+@media (prefers-color-scheme:dark){:root{--bg:#16161a;--panel:#202026;--ink:#ececf1;--mute:#9a9aa6;--line:#33333c}}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;align-items:center;gap:18px;padding:14px 22px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:5}
+header h1{font-size:16px;margin:0;font-weight:650}header .sub{color:var(--mute);font-size:12px}
+nav{display:flex;gap:4px;margin-left:12px}nav button{border:0;background:none;color:var(--mute);padding:7px 12px;border-radius:8px;font:inherit;cursor:pointer}
+nav button.on{background:var(--bg);color:var(--ink);font-weight:600}
+.spacer{flex:1}.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 11px;border-radius:8px;font:inherit;cursor:pointer}
+.btn:hover{border-color:var(--mute)}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+main{padding:18px 22px 60px}
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.legend{display:flex;gap:12px;color:var(--mute);font-size:12px;margin-left:auto;flex-wrap:wrap}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.calwrap{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px}
+.week{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:14px;overflow:hidden}
+.week h3{margin:0;padding:9px 14px;font-size:12px;color:var(--mute);font-weight:600;border-bottom:1px solid var(--line);letter-spacing:.02em}
+.grid{display:grid;grid-template-columns:74px repeat(7,minmax(0,1fr))}
+.grid .dh{padding:7px 8px;font-size:12px;color:var(--mute);border-bottom:1px solid var(--line);border-left:1px solid var(--line)}
+.grid .dh.today{color:var(--accent);font-weight:700}.grid .sl{padding:8px;font-size:12px;color:var(--mute);border-bottom:1px solid var(--line)}
+.cell{min-height:74px;border-left:1px solid var(--line);border-bottom:1px solid var(--line);padding:5px;position:relative}
+.cell.drop{background:rgba(217,130,43,.12)}.cell.past{background:repeating-linear-gradient(135deg,transparent 0 6px,rgba(127,127,127,.05) 6px 12px)}
+.card{border-radius:8px;padding:5px 7px;font-size:12px;border-left:4px solid var(--fc,#999);background:var(--bg);cursor:default;margin-bottom:4px}
+.card[draggable=true]{cursor:grab}.card .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .m{color:var(--mute);font-size:11px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.badge{font-size:10px;padding:1px 6px;border-radius:9px;font-weight:600}.b-published{background:rgba(47,143,91,.15);color:var(--ok)}
+.b-scheduled{background:rgba(217,130,43,.16);color:var(--accent)}.b-planned{background:rgba(90,106,207,.16);color:var(--plan)}
+.notready{color:var(--warn);font-weight:600}
+.gap{color:var(--warn);font-size:11px;font-weight:600;padding:4px}.gap.past{color:var(--mute);font-weight:400}
+.x{position:absolute;right:6px;top:4px;border:0;background:none;color:var(--mute);cursor:pointer;font-size:14px;display:none}.cell:hover .x{display:block}
+aside{min-width:0}aside .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px;position:sticky;top:76px}
+aside h4{margin:0 0 8px;font-size:13px}aside .pool{max-height:60vh;overflow:auto}aside .fh{font-size:11px;color:var(--mute);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.ep{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer}
+.ep img{width:100%;aspect-ratio:9/12;object-fit:cover;display:block;background:var(--line)}.ep .b{padding:9px 11px}
+.ep .t{font-weight:600}.ep .m{color:var(--mute);font-size:12px;display:flex;gap:6px;flex-wrap:wrap;margin-top:3px}
+.pill{font-size:11px;border-radius:9px;padding:1px 7px;background:var(--bg);border:1px solid var(--line)}
+.stock{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.sbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.big{font-size:30px;font-weight:700}.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+.bar{height:8px;border-radius:5px;background:var(--line);overflow:hidden;display:flex;margin-top:4px}.bar span{display:block;height:100%}
+table{border-collapse:collapse;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+td,th{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:top}th{color:var(--mute);font-weight:600;font-size:12px}
+select,input{font:inherit;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+#drawer{position:fixed;inset:0 0 0 auto;width:min(760px,96vw);background:var(--panel);border-left:1px solid var(--line);transform:translateX(100%);transition:.2s;z-index:10;overflow:auto;padding:20px}
+#drawer.open{transform:none}#drawer .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}#drawer .thumbs img{width:100%;border-radius:6px}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:9px;font-size:13px;display:none;z-index:20;max-width:80vw;white-space:pre-wrap}
+.muted{color:var(--mute)}.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <div><h1 id="title">series-factory</h1><div class="sub" id="sub"></div></div>
+  <nav id="tabs"></nav><div class="spacer"></div>
+  <button class="btn" id="reload">↻</button>
+</header>
+<main id="main"></main>
+<div id="drawer"></div><div id="toast"></div>
+<script>
+const DATA0 = /*__DATA__*/null;
+const STATIC = !!(DATA0 && DATA0.static);
+let D = DATA0, from = null, fmtFilter = "";
+const L = {tr:{calendar:"Takvim",episodes:"Bölümler",stock:"Stok",ideas:"Olaylar",todo:"TODO",today:"Bugün",prev:"◀ Önceki",next:"Sonraki ▶",
+  auto:"Boşlukları doldur",published:"yayında",scheduled:"planlı",planned:"taslak",gap:"BOŞ",ready:"Hazır stok",notready:"hazır değil",
+  week:"Hafta",perweek:"haftada",readyn:"hazır",prod:"üretimde",ideasw:"olay bekliyor",runsout:"Stok bitişi",firstgap:"İlk plansız gün",
+  until:"Planlı son tarih",all:"Tümü",static:"salt okunur kopya",drop:"Buraya bırak",remove:"Plandan çıkar",frames:"Kareler",slides:"Karusel",
+  video:"Video",stage:"aşama",generated:"güncellendi",nothing:"Hazır stok yok",confirmauto:"Önümüzdeki 4 haftanın boş kuşakları hazır bölümlerle doldurulsun mu?"},
+ en:{calendar:"Calendar",episodes:"Episodes",stock:"Stock",ideas:"Ideas",todo:"TODO",today:"Today",prev:"◀ Prev",next:"Next ▶",
+  auto:"Fill gaps",published:"published",scheduled:"scheduled",planned:"planned",gap:"EMPTY",ready:"Ready stock",notready:"not ready",
+  week:"Week",perweek:"per week",readyn:"ready",prod:"in production",ideasw:"ideas waiting",runsout:"Stock runs out",firstgap:"First unplanned day",
+  until:"Planned until",all:"All",static:"read-only copy",drop:"Drop here",remove:"Remove from plan",frames:"Frames",slides:"Carousel",
+  video:"Video",stage:"stage",generated:"updated",nothing:"No ready stock",confirmauto:"Fill the empty slots of the next 4 weeks with ready episodes?"}};
+let t = k => (L[(D&&D.lang)||"tr"]||L.tr)[k]||k;
+const STAGE = {tr:{script:"senaryo",frames:"kareler",frames_done:"kareler tamam",audio:"ses",carousel:"karusel",video:"video"},en:{}};
+const st = s => (STAGE[D.lang]||{})[s]||s;
+const ab = p => ({instagram:"ig",tiktok:"tt",youtube:"yt"})[p]||p.slice(0,2);
+const $ = s => document.querySelector(s), esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fcol = f => { const k = Object.keys(D.calendar.formats); return `var(--f${Math.max(0,k.indexOf(f))%6})`; };
+const media = (no,kind,f) => `/media/${no}/${kind}/${encodeURIComponent(f)}`;
+let tab = location.hash.slice(1)||"calendar";
+function toast(m){const e=$("#toast");e.textContent=m;e.style.display="block";clearTimeout(e._t);e._t=setTimeout(()=>e.style.display="none",4200);}
+async function load(){ if(STATIC){render();return;}
+  const q = from?`?from=${from}&to=${addDays(from,41)}`:""; D = await (await fetch("/api/all"+q)).json(); render(); }
+function addDays(iso,n){const d=new Date(iso+"T12:00:00");d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+async function post(body){ const r = await fetch("/api/schedule",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const j = await r.json(); toast(j.output||j.error||""); await load(); }
+function render(){
+  $("#title").textContent = D.series||"series-factory";
+  $("#sub").textContent = `${t("generated")} ${D.generated.replace("T"," ")}` + (STATIC?` · ${t("static")}`:"");
+  $("#tabs").innerHTML = ["calendar","episodes","stock","ideas","todo"].map(k=>`<button class="${k==tab?"on":""}" data-t="${k}">${t(k)}</button>`).join("");
+  document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;location.hash=tab;render();});
+  ({calendar,episodes,stock,ideas,todo})[tab]();
+}
+const epBy = () => Object.fromEntries(D.episodes.map(e=>[e.no,e]));
+function cardHTML(r, drag){
+  const e = epBy()[r.episode]||{}; const pl = Object.entries(r.platforms||{}).map(([p,s])=>`${ab(p)}${s=="published"?"✓":"·"}`).join(" ");
+  return `<div class="card" style="--fc:${fcol(r.format)}" ${drag?`draggable="true" data-ep="${r.episode}"`:""} data-open="${r.episode}">
+   <div class="t">${esc(r.episode)} · ${esc(r.title||e.title)}</div>
+   <div class="m"><span class="badge b-${r.status}">${t(r.status)}</span><span>${esc(r.label||"")}</span><span>${pl}</span>
+   ${(!r.ready && r.status!="published")?`<span class="notready">⚠ ${t("notready")} (${st(r.stage)})</span>`:""}
+   ${(r.missing_platforms||[]).length && r.status!="planned"?`<span class="notready">−${r.missing_platforms.map(ab).join(",")}</span>`:""}</div></div>`;
+}
+function calendar(){
+  const C = D.calendar, S = C.slots, days = C.days;
+  let h = `<div class="toolbar"><button class="btn" id="pv">${t("prev")}</button><button class="btn" id="td">${t("today")}</button><button class="btn" id="nx">${t("next")}</button>
+   ${STATIC?"":`<button class="btn primary" id="auto">${t("auto")}</button>`}
+   <div class="legend">${Object.entries(C.formats).map(([k,f])=>`<span><i style="background:${fcol(k)}"></i>${esc(f.label)}</span>`).join("")}</div></div><div class="calwrap"><div>`;
+  for(let i=0;i<days.length;i+=7){
+    const wk = days.slice(i,i+7);
+    h += `<div class="week"><h3>${esc(wk[0].date)} – ${esc(wk[wk.length-1].date)}</h3><div class="grid"><div class="dh"></div>`;
+    h += wk.map(d=>`<div class="dh ${d.date==C.today?"today":""}">${d.weekday} ${d.date.slice(8)}.${d.date.slice(5,7)}</div>`).join("");
+    for(const [sk,s] of Object.entries(S)){
+      h += `<div class="sl">${esc(s.label)}<br>${s.time}</div>`;
+      for(const d of wk){
+        const rows = d.rows.filter(r=>r.slot==sk); const past = d.date < C.today;
+        h += `<div class="cell ${past?"past":""}" data-date="${d.date}" data-slot="${sk}">` + rows.map(r=> r.episode
+          ? cardHTML(r, !STATIC && r.status=="planned") + (r.status=="planned"&&!STATIC?`<button class="x" title="${t("remove")}" data-rm="${r.episode}">×</button>`:"")
+          : `<div class="gap ${past?"past":""}">${past?"—":t("gap")}</div>`).join("") + `</div>`;
+      }
+    }
+    h += `</div></div>`;
+  }
+  h += `</div><aside><div class="box"><h4>${t("ready")}</h4><div class="pool">`;
+  const taken = new Set(days.flatMap(d=>d.rows.map(r=>r.episode)).filter(Boolean));
+  const allTaken = new Set(); D.episodes.forEach(e=>{ if(Object.keys(e.publish||{}).length) allTaken.add(e.no); });
+  const order = [...new Set([...Object.values(S).flatMap(s=>s.formats), ...Object.keys(C.formats)])];
+  for(const k of order){ const f = C.formats[k]; if(!f) continue;
+    const r = D.episodes.filter(e=>e.format==k && e.ready && !taken.has(e.no) && !allTaken.has(e.no) && !isPlanned(e.no));
+    if(!r.length) continue;
+    h += `<div class="fh">${esc(f.label)} · ${r.length}</div>` + r.map(e=>`<div class="card" style="--fc:${fcol(k)}" ${STATIC?"":`draggable="true"`} data-ep="${e.no}" data-open="${e.no}"><div class="t">${e.no} · ${esc(e.title)}</div><div class="m">${e.duration?e.duration+" sn":""} ${e.slides.length?e.slides.length+" slayt":""}</div></div>`).join("");
+  }
+  h += `</div></div></aside></div>`;
+  $("#main").innerHTML = h;
+  $("#pv").onclick=()=>{from=addDays(days[0].date,-28);load();}; $("#nx").onclick=()=>{from=addDays(days[0].date,28);load();}; $("#td").onclick=()=>{from=null;load();};
+  if(!STATIC){ $("#auto").onclick=()=>{ if(confirm(t("confirmauto"))) post({op:"auto"}); };
+    document.querySelectorAll("[data-rm]").forEach(b=>b.onclick=ev=>{ev.stopPropagation();post({op:"remove",episode:b.dataset.rm});});
+    document.querySelectorAll("[draggable=true]").forEach(c=>c.ondragstart=ev=>ev.dataTransfer.setData("text/plain",c.dataset.ep));
+    document.querySelectorAll(".cell").forEach(c=>{ if(c.dataset.date < C.today) return;
+      c.ondragover=ev=>{ev.preventDefault();c.classList.add("drop");}; c.ondragleave=()=>c.classList.remove("drop");
+      c.ondrop=ev=>{ev.preventDefault();c.classList.remove("drop");const no=ev.dataTransfer.getData("text/plain");
+        post({op:isPlanned(no)?"move":"add",episode:no,date:c.dataset.date,slot:c.dataset.slot,force:c.querySelector(".card")?true:false});}; }); }
+  bindOpen();
+}
+function isPlanned(no){ return D.calendar.days.some(d=>d.rows.some(r=>r.episode==no && r.status=="planned")); }
+function bindOpen(){ document.querySelectorAll("[data-open]").forEach(c=>c.onclick=()=>openEp(c.dataset.open)); }
+function episodes(){
+  const F = D.calendar.formats;
+  let h = `<div class="toolbar"><select id="ff"><option value="">${t("all")}</option>${Object.entries(F).map(([k,f])=>`<option value="${k}" ${k==fmtFilter?"selected":""}>${esc(f.label)}</option>`).join("")}</select>
+   <span class="muted">${D.episodes.filter(e=>!fmtFilter||e.format==fmtFilter).length}</span></div><div class="cards">`;
+  for(const e of D.episodes.filter(e=>!fmtFilter||e.format==fmtFilter).slice().reverse()){
+    const pub = Object.values(e.publish||{}); const ps = pub.some(p=>p.status=="published")?"published":pub.length?"scheduled":"";
+    h += `<div class="ep" data-open="${e.no}">${e.thumb&&!STATIC?`<img loading="lazy" src="${media(e.no,"frames",e.thumb)}">`:""}
+      <div class="b"><div class="t">${e.no} · ${esc(e.title)}</div><div class="m"><span class="pill" style="border-color:${fcol(e.format)}">${esc((F[e.format]||{}).label||e.format)}</span>
+      <span class="pill">${st(e.stage)}${e.ready?" ✓":""}</span><span class="pill">${e.frames}</span>${ps?`<span class="badge b-${ps}">${t(ps)}</span>`:""}</div></div></div>`;
+  }
+  $("#main").innerHTML = h + `</div>`; $("#ff").onchange=ev=>{fmtFilter=ev.target.value;render();}; bindOpen();
+}
+function openEp(no){
+  const e = epBy()[no]; if(!e) return; const dr = $("#drawer");
+  const pub = Object.entries(e.publish||{}).map(([p,v])=>`<tr><td>${p}</td><td>${t(v.status)}</td><td>${esc(v.date||"")}</td><td>${v.link?`<a href="${esc(v.link)}" target="_blank">link</a>`:""}</td></tr>`).join("");
+  dr.innerHTML = `<button class="btn" style="float:right" onclick="document.querySelector('#drawer').classList.remove('open')">✕</button>
+   <h2 style="margin-top:0">${e.no} · ${esc(e.title)}</h2><p class="muted">${esc(e.idea)} · ${esc((D.calendar.formats[e.format]||{}).label||e.format)} · ${st(e.stage)} · ${e.frames} ${e.duration?"· "+e.duration+" sn":""}</p>
+   ${e.hook?`<p><b>${esc(e.hook)}</b></p>`:""}${e.summary?`<p>${esc(e.summary)}</p>`:""}
+   ${pub?`<table><tr><th>platform</th><th></th><th></th><th></th></tr>${pub}</table>`:""}
+   ${!STATIC&&e.video?`<h4>${t("video")}</h4><video controls preload="metadata" style="max-width:320px;width:100%;border-radius:8px" src="${media(e.no,"output",e.video)}"></video>`:""}
+   ${!STATIC&&e.slides.length?`<h4>${t("slides")}</h4><div class="thumbs">${e.slides.map(f=>`<img loading="lazy" src="${media(e.no,"carousel",f)}">`).join("")}</div>`:""}
+   ${!STATIC&&e.frame_files.length?`<h4>${t("frames")} (${e.frames})</h4><div class="thumbs">${e.frame_files.map(f=>`<img loading="lazy" title="${esc(f)}" src="${media(e.no,"frames",f)}">`).join("")}</div>`:""}`;
+  dr.classList.add("open");
+}
+function stock(){
+  const S = D.calendar.stock, F = D.calendar.formats; let h = `<div class="stock">`;
+  for(const [k,s] of Object.entries(S)){
+    h += `<div class="sbox"><div class="muted">${esc(s.label)} · ${s.time} · ${t("perweek")} ${s.per_week}</div>
+     <div class="big">${s.ready} <span class="muted" style="font-size:14px;font-weight:400">${t("readyn")}</span></div>
+     <div class="row"><span>${t("until")}</span><b>${esc(s.scheduled_until||"—")} (${s.scheduled_count})</b></div>
+     <div class="row"><span>${t("firstgap")}</span><b>${esc(s.first_gap||"—")}</b></div>
+     <div class="row"><span>${t("runsout")}</span><b style="color:${(s.days_covered??99)<14?"var(--warn)":"inherit"}">${esc(s.runs_out||"—")} ${s.days_covered!=null?`(${s.days_covered} gün)`:""}</b></div>`;
+    for(const [f,v] of Object.entries(s.formats)){
+      const tot = v.ready.length + v.in_production.length || 1;
+      h += `<div style="margin-top:12px"><div class="row" style="border:0;padding-bottom:0"><span>${esc((F[f]||{}).label||f)}</span>
+       <span class="muted">${v.ready.length} ${t("readyn")} · ${v.in_production.length} ${t("prod")} · ${v.ideas_waiting.length} ${t("ideasw")}</span></div>
+       <div class="bar"><span style="width:${100*v.ready.length/tot}%;background:var(--ok)"></span><span style="width:${100*v.in_production.length/tot}%;background:var(--accent);opacity:.6"></span></div>
+       <div class="muted" style="font-size:11px;margin-top:3px">${Object.entries(v.by_stage).filter(([,n])=>n).map(([x,n])=>`${n} ${st(x)}`).join(" · ")}</div></div>`;
+    }
+    h += `</div>`;
+  }
+  $("#main").innerHTML = h + `</div>`;
+}
+function ideas(){
+  const F = D.calendar.formats; const by = {};
+  D.ideas.filter(i=>i.status=="waiting").forEach(i=>(by[i.format||"-"]=by[i.format||"-"]||[]).push(i));
+  let h = "";
+  for(const [f,list] of Object.entries(by)){
+    h += `<h3>${esc((F[f]||{}).label||f)} · ${list.length}</h3><table><tr><th>kod</th><th>başlık</th><th>grup</th></tr>${list.map(i=>`<tr><td>${i.code}${i.star?" ★":""}</td><td>${esc(i.title)}</td><td class="muted">${esc(i.group||"")}</td></tr>`).join("")}</table>`;
+  }
+  $("#main").innerHTML = h || `<p class="muted">—</p>`;
+}
+function todo(){
+  const open = D.todo.filter(x=>!x.done);
+  $("#main").innerHTML = `<table><tr><th>#</th><th></th></tr>${open.map(x=>`<tr><td>${x.id}</td><td>${esc(x.text)}</td></tr>`).join("")}</table>`;
+}
+$("#reload").onclick = load;
+window.onhashchange = ()=>{ tab = location.hash.slice(1)||"calendar"; render(); };
+load();
+</script>
+</body>
+</html>

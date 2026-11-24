@@ -71,13 +71,11 @@ def sound_library():
 
 def previous_episodes():
     out = []
-    base = core.episodes_dir()
-    os.makedirs(base, exist_ok=True)
-    for d in sorted(os.listdir(base)):
-        p = os.path.join(base, d, core.layout("plan"))
-        if os.path.exists(p):
-            j = core.load_plan(os.path.join(base, d))
-            out.append((j.get("episode_no"), j.get("title"), j.get("source_idea"), d))
+    os.makedirs(core.episodes_dir(), exist_ok=True)
+    for path, _ in core.episode_folders():
+        if os.path.exists(os.path.join(path, core.layout("plan"))):
+            j = core.load_plan(path)
+            out.append((j.get("episode_no"), j.get("title"), j.get("source_idea"), os.path.basename(path)))
     return out
 
 
@@ -123,8 +121,13 @@ def build_prompt(a):
 
 
 def word_limits(d):
-    """(min, max, target text) for this plan: idea type override (series.json ideas.types.<P>.words) or profile."""
-    p = core.profile()["words"]
+    """(min, max, target text) for this plan: format words (formats.<key>.words), idea type override
+    (series.json ideas.types.<P>.words) or profile."""
+    fmt = d.get("episode_format") or core.format_for_idea(d.get("source_idea"))
+    f = core.formats().get(fmt, {}) if fmt else {}
+    if f.get("words"):
+        return f["words"]["min"], f["words"]["max"], f["words"].get("target", "")
+    p = core.profile(fmt if f else None)["words"]
     src = str(d.get("source_idea") or "")
     for prefix, t in core.cfg().get("ideas", {}).get("types", {}).items():
         if isinstance(t, dict) and t.get("words") and src.startswith(prefix + "-"):
@@ -278,13 +281,17 @@ def script_md(d, summary):
     return "\n".join(st) + "\n"
 
 
-def save(result, episode_no=None):
+def save(result, episode_no=None, fmt=None):
     from .migrate import plan_to_v3
     d = plan_to_v3(result["script"])
     d["format"] = 3
     d["episode_no"] = episode_no or d.get("episode_no")
     slug = re.sub(r"[^a-z0-9_]+", "_", result.get("slug", "episode").lower()).strip("_")
-    ep = os.path.join(core.episodes_dir(), f"{d['episode_no']:03d}_{slug}")
+    fmt = fmt or d.get("episode_format") or core.format_for_idea(d.get("source_idea")) or core.default_format()
+    if fmt not in core.formats():
+        raise SystemExit(T(f"unknown format: {fmt} ({', '.join(core.formats())})", f"bilinmeyen format: {fmt} ({', '.join(core.formats())})"))
+    d["episode_format"] = fmt
+    ep = core.new_episode_dir(d["episode_no"], slug, fmt)
     os.makedirs(core.ep_path(ep, "frames"), exist_ok=True)
     core.save_plan(ep, d)
     open(os.path.join(ep, core.layout("script_md")), "w", encoding="utf-8").write(script_md(d, result.get("summary", "")))
@@ -347,7 +354,7 @@ def cmd(a):
         else:
             txt = open(a.file, encoding="utf-8").read()
             m = re.search(r"\{.*\}", txt, re.S)
-            save(json.loads(m.group(0)), a.episode_no)
+            save(json.loads(m.group(0)), a.episode_no, getattr(a, "fmt", None))
     except RuntimeError as e:
         sys.exit(T("API error: ", "API hatası: ") + str(e))
     return 0
@@ -362,4 +369,6 @@ def add_parser(sp):
     x = s.add_parser("validate"); x.add_argument("episode"); x.add_argument("--strict", action="store_true")
     x.add_argument("--json", action="store_true")
     x = s.add_parser("save"); x.add_argument("file"); x.add_argument("--episode-no", type=int)
+    x.add_argument("--format", dest="fmt", help=T("episode format (series.json formats); default: from the idea type",
+                                                  "bölüm formatı (series.json formats); varsayılan: olay tipinden"))
     p.set_defaults(func=cmd)

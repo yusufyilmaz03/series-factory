@@ -107,9 +107,59 @@ def idea_published(no, ep, dry):
             print(T(f"WARNING: could not write the status of {code}: {e}", f"UYARI: {code} olay durumu yazılamadı: {e}"))
 
 
+def sync(a, d):
+    """Bring the log up to date: a scheduled post whose time has passed counts as published (the scheduler posts on
+    time; turn off with series.json schedule.assume_published=false), and --from-file merges a status list
+    [{metricool_id | episode+platform, status, link?, date?}] exported from the scheduler."""
+    from . import schedule
+    now = schedule.now()
+    changes = []
+    by_mid = {v.get("metricool_id"): (no, p) for no, k in d.items() for p, v in k.get("platforms", {}).items()
+              if v.get("metricool_id")}
+    if a.from_file:
+        rows = json.load(open(a.from_file, encoding="utf-8"))
+        rows = rows.get("posts", rows) if isinstance(rows, dict) else rows
+        for r in rows:
+            key = by_mid.get(str(r.get("metricool_id") or r.get("id") or ""))
+            if not key and r.get("episode") and r.get("platform"):
+                key = (str(r["episode"]).zfill(3), r["platform"])
+            if not key or key[0] not in d or key[1] not in d[key[0]].get("platforms", {}):
+                continue
+            v = d[key[0]]["platforms"][key[1]]
+            st = STATUS_ALIASES.get(r.get("status"), r.get("status")) or v.get("status")
+            new = {**v, "status": st, **({"link": r["link"]} if r.get("link") else {}), **({"date": r["date"]} if r.get("date") else {})}
+            if new != v:
+                changes.append((key[0], key[1], v.get("status"), st))
+                d[key[0]]["platforms"][key[1]] = new
+    if schedule.sched_cfg().get("assume_published", True):
+        for no, k in d.items():
+            for p, v in k.get("platforms", {}).items():
+                t = schedule.parse_dt(v.get("date"))
+                if v.get("status") == "scheduled" and t and t <= now:
+                    changes.append((no, p, "scheduled", "published"))
+                    if not a.dry_run:
+                        v["status"] = "published"
+    newly = sorted({no for no, _, old, new in changes if new == "published"})
+    for no, p, old, new in changes:
+        print(f"{'[dry-run] ' if a.dry_run else ''}{no} {p}: {old} → {new}")
+    if not changes:
+        print(T("publish log is up to date", "yayın kaydı güncel"))
+        return 0
+    if not a.dry_run:
+        save(d)
+    for no in newly:
+        try:
+            idea_published(no, core.episode_dir(no), a.dry_run)
+        except SystemExit:
+            pass
+    return 0
+
+
 def cmd_publish(a):
     d = load()
     P = platforms()
+    if a.op == "sync":
+        return sync(a, d)
     if a.op == "list":
         if a.episode:
             no = catalog.episode_no(os.path.basename(core.episode_dir(a.episode)))
@@ -147,7 +197,11 @@ def cmd_publish(a):
     status = STATUS_ALIASES.get(a.status, a.status)
     ep = core.episode_dir(a.episode)
     no = catalog.episode_no(os.path.basename(ep))
-    pl = list(P) if "all" in a.platform else a.platform
+    if "all" in a.platform:
+        from . import schedule
+        pl = schedule.fmt_platforms(core.episode_format(ep))
+    else:
+        pl = a.platform
     k = d.get(no, {})
     if a.video:
         v = find_video(ep, a.video)
@@ -240,7 +294,7 @@ def cmd_drive(a):
     os.makedirs(D, exist_ok=True)
     missing = []
     for no in numbers(a.episodes):
-        k = [d for d in glob.glob(os.path.join(core.episodes_dir(), f"{no}_*")) if os.path.isdir(d)]
+        k = [p_ for p_, _ in core.episode_folders() if os.path.basename(p_).startswith(no + "_")]
         if len(k) != 1:
             print(T(f"{no}: episode folder not found", f"{no}: bölüm klasörü bulunamadı"))
             missing.append(no)
@@ -269,7 +323,8 @@ def cmd_drive(a):
 
 def add_parser(sp):
     p = sp.add_parser("publish", help=T("publish log", "yayın kaydı"))
-    p.add_argument("op", choices=["list", "add"]); p.add_argument("episode", nargs="?")
+    p.add_argument("op", choices=["list", "add", "sync"]); p.add_argument("episode", nargs="?")
+    p.add_argument("--from-file", help=T("status list exported from the scheduler (sync)", "zamanlayıcıdan alınan durum listesi (sync)"))
     p.add_argument("--video"); p.add_argument("--platform", nargs="+")
     p.add_argument("--status", choices=["scheduled", "published", "planlandi", "yayinda"], default="scheduled")
     p.add_argument("--date"); p.add_argument("--metricool-id"); p.add_argument("--link")

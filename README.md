@@ -48,14 +48,20 @@ Try it on the bundled fictional example: `series --series example_series status`
 | Check | `series check <ep>`, `series strips <ep>` | — |
 | Batch | `series batch 013-018`, `series produce <ep>` | — |
 | Series | `series status`, `series ideas`, `series todo`, `series canon`, `series docs`, cards: `series character / location / sound` | — |
-| Publish | `series publish list / add`, `series drive prepare` | — |
+| Formats | `series formats [organize / set]`, `series carousel <ep>`, `series gemini prepare / collect` (Gemini web) | Pillow for carousels |
+| Calendar | `series calendar [--stock] [--html f]`, `series schedule add / move / remove / auto`, `series views`, `series ui` | — |
+| Publish | `series publish list / add / sync`, `series drive prepare` | — |
 
 `series help` prints the job → command list. Commands print a short summary; most support `--json` and `--dry-run`
 (cost estimate, nothing produced), and they stop at approval points — ready for agents later.
 
 ## Formats
 
-A series picks a format profile: `vertical_short` (45–75 s, 1080×1920; tuned) or `horizontal_long` (8–15 min,
+A series can have several episode formats (e.g. a normal episode and a 30 s short), each with its own folder, output
+(video and/or carousel), word limits and posting slot; `series calendar` and `series ui` show what was posted when, what
+is scheduled and where the gaps are. See [docs/en/formats-and-calendar.md](docs/en/formats-and-calendar.md).
+
+Each format uses a profile: `vertical_short` (45–75 s, 1080×1920; tuned) or `horizontal_long` (8–15 min,
 1920×1080; skeleton, phase 2). Size, fps, subtitle layout and length rules come from the profile.
 
 ## Languages

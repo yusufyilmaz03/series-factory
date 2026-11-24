@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "series-factory"
-version = "0.1.0"
+version = "0.2.0"
 description = "AI-assisted series video pipeline: script plan -> frames -> voice -> edit -> check -> publish"
 readme = "README.md"
 license = { text = "MIT" }
@@ -27,4 +27,4 @@ series = "series_factory.cli:main"
 include = ["series_factory*"]
 
 [tool.setuptools.package-data]
-series_factory = ["templates/*.md", "templates/series/*", "templates/series/.env.example", "templates/series/docs/*"]
+series_factory = ["templates/*.md", "templates/series/*", "templates/series/.env.example", "templates/series/docs/*", "templates/bridge/*", "ui/*"]

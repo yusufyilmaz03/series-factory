@@ -8,8 +8,9 @@ import argparse, os, shutil, sys
 from . import __version__, core, i18n
 from .i18n import T
 
-MODULES = ["status", "ideas", "todo", "canon", "check", "docs", "cards", "publish", "script", "images", "hf", "voice",
-           "assemble", "subplace", "strips", "batch", "produce", "assets", "library", "heic"]
+MODULES = ["status", "formats", "schedule", "ideas", "todo", "canon", "check", "docs", "cards", "publish", "script", "images", "hf", "voice",
+           "assemble", "subplace", "strips", "batch", "produce", "assets", "library", "heic", "carousel", "gemini_web",
+           "sfx", "ui"]
 TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "series")
 
 

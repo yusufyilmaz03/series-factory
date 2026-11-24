@@ -102,6 +102,37 @@ def _sound(e):
     return e
 
 
+def _ambience(o):
+    o = _ren(o, {"ad": "id", "ses": "volume", "bas": "start", "son": "end", "bas_kayma": "start_offset",
+                 "son_kayma": "end_offset"})
+    for k in ("start", "end"):
+        if k in o:
+            o[k] = _anchor(o[k])
+    return o
+
+
+def _duck(k):
+    return _ren(k, {"esik": "threshold", "oran": "ratio", "atak": "attack", "birakma": "release"}) if isinstance(k, dict) else k
+
+
+SLIDE_TYPES = {"kapak": "cover", "soz": "quote", "ozet": "summary", "madde": "item"}
+
+
+def carousel_to_v2(k):
+    if not isinstance(k, dict) or ("slaytlar" not in k and "ust" not in k):
+        return k
+    k = _ren(k, {"ust": "kicker", "baslik": "title", "slaytlar": "slides"})
+    out = []
+    for s in k.get("slides", []):
+        s = _ren(s, {"kare": "frame", "tip": "type", "alt": "subtitle", "baslik": "title", "metin": "text",
+                     "kirp": "crop", "imza": "signature", "maddeler": "bullets", "uyari": "warning", "son": "footer"})
+        if "type" in s:
+            s["type"] = SLIDE_TYPES.get(s["type"], s["type"])
+        out.append(s)
+    k["slides"] = out
+    return k
+
+
 def is_legacy_plan(d):
     return "sahneler" in d or d.get("format") == 2
 
@@ -114,12 +145,18 @@ def plan_to_v3(d):
         "sahneler": "scenes", "efektler": "sfx", "tur": "genre", "muzik": "music", "sponsor_yuvasi": "sponsor_slot",
         "kapanis": "closing", "hashtagler": "hashtags", "kanon_guncellemesi": "canon_updates",
         "sure_hedef_sn": "target_sec", "mekan_karesi": "set_frame", "ses": "audio_notes", "kaynaklar": "sources",
-        "karusel_notu": "carousel_note"})
+        "karusel_notu": "carousel_note", "ortam": "ambience", "karusel": "carousel", "bicim": "format"})
     d["format"] = 3
     d["scenes"] = [_scene(s) for s in d.get("scenes", [])]
     d["sfx"] = [_sound(e) for e in d.get("sfx") or []]
     if isinstance(d.get("music"), dict):
         d["music"] = _sound(d["music"])
+        if "kisma" in d["music"]:
+            d["music"]["duck"] = _duck(d["music"].pop("kisma"))
+    if d.get("ambience"):
+        d["ambience"] = [_ambience(o) for o in d["ambience"]]
+    if isinstance(d.get("carousel"), dict):
+        d["carousel"] = carousel_to_v2(d["carousel"])
     if isinstance(d.get("set_frame"), dict):
         sf = _ren(d["set_frame"], {"dosya": "file", "referanslar": "refs", "duzenle": "edit"})
         if "refs" in sf:

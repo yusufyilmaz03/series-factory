@@ -30,13 +30,15 @@ my-series/
 | `references` | `{CODE: path}` character sheets and location plates attached to frame prompts |
 | `character_descriptions`, `location_descriptions` | one English sentence per code, used in frame prompts |
 | `characters` | per character: `display_name` (on-screen name of lines), `aliases` (regexes that find the character in idea texts), `line_colour` (ASS colour of its subtitle lines) |
-| `image` | `adapter` (`gemini` / `manual` / `higgsfield`), `model`, `size`, `intro`, `style`, `expression_suffix` |
+| `image` | `adapter` (`gemini` / `manual` / `higgsfield`), `model`, `size`, `intro`, `style`, `expression_suffix`; `gemini_web`: `out_dir`, `job_name`, `max_px`, `legacy_keys` for `series gemini` |
 | `script_writer` | `model`, `max_tokens`, `system_prompt` or `system_prompt_file`, optional `format_file` |
 | `ideas` | `types`: `{PREFIX: {name, label, words?}}` idea code prefixes (sort order) and per-type word limits; `labels` override the markers used inside idea texts |
 | `docs` | `canon` (character file), `script_context` (doc name prefixes given to the writer), `generated` (file names of generated views), `project_paths` (doc → Claude project path), `generated_title_prefix` |
 | `context` | `always`: characters always included in `series context`; `narrator_strip`: regex removed from the narrator's canon section |
 | `rules` | style checks: `emotion_tags`, `max_ellipsis`, `address_pattern`, `max_hashtags`, `require_sponsor_slot`, `custom` (see below) |
 | `publish` | `platforms`, `cover_file` (e.g. `"{no}_cover.jpg"`) |
+| `formats`, `schedule` | episode formats and posting slots, see [formats-and-calendar.md](formats-and-calendar.md) |
+| `carousel` | slide look: `width`, `height`, `font`, `accent` / `dark` / `text` colours, `handle`, `signature`, `quality` |
 | `library` | `sheet_suffix`, `master_suffix` file name parts for generated sheets/plates |
 | `subtitles` | `model`: path of the optional YOLO11n ONNX file |
 | `paths`, `layout` | folder and file names (defaults are English; a migrated series keeps its old names) |
@@ -63,7 +65,12 @@ Core shape:
              "frames": [{"file": "01_hook.jpg", "motion": "in", "refs": ["CHAR", "PLACE"], "prompt": "...",
                          "reads": ["..."], "subtitle_pos": "top", "hold": 0.5, "transition": "fade"}]}],
  "sfx": [{"id": "door_creak", "anchor": {"word": "Open!"}, "offset": 0, "volume": 0.5}],
- "music": {"id": "music_theme", "volume": 0.12}}
+ "ambience": [{"id": "room_tone", "volume": 0.2, "start": {"word": "Outside."}, "end": null, "fade": 1.5}],
+ "music": {"id": "music_theme", "volume": 0.12, "duck": {"threshold": 0.015, "ratio": 6}},
+ "episode_format": "main",
+ "carousel": {"kicker": "...", "title": "...", "slides": [{"frame": "01.jpg", "type": "cover", "subtitle": "..."}]}}
 ```
+`ambience`: a looped bed between two anchors (none = whole video). `music.duck`: lower the music under speech
+(sidechain; `true` or a dict, an empty `{}` is off). An sfx anchor `{"word": "x", "n": 2}` takes the 2nd occurrence.
 Plans written with the original pipeline (format 2, Turkish field names) are read too; they are converted in memory,
 and `series migrate` converts the files.

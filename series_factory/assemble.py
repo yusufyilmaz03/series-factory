@@ -17,11 +17,16 @@ Step titles: scene "title_steps": [{text, anchor: {word|line|frame}, offset}].
 Timing: frame "hold": s -> the frame stays silent after its words (music/sfx continue).
 Transition: frame "transition" (core.transition); default fade 0.35 s at scene starts, cut inside. First frame: cut.
 """
-import json, os, subprocess, tempfile
+import json, os, shutil, subprocess, tempfile
 
 from . import assets, core, profiles
 from .core import strip_tags, transition
 from .i18n import T
+
+
+CUT_FADE = 0.012     # s; anti-click fade where narration is cut next to a line or silence
+# mix inputs and the limiter share one format (loudnorm outputs 192 kHz; the limiter should run at 48 kHz)
+STEREO = "aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo"
 
 
 def run(cmd):
@@ -105,10 +110,13 @@ def line_styles():
     return out
 
 
-def assemble(episode, out=None, no_sfx=False, audio_assets=None):
+def assemble(episode, out=None, no_sfx=False, audio_assets=None, plan_file=None, audio_only=False, video=None):
+    """audio_only: keep the picture of an existing video (video, default: out) and only rebuild the mix;
+    stops when the plan's length no longer matches the video. plan_file: use this plan instead (A/B tests)."""
     core.check_media_tools()
     c = core.cfg()
-    P = core.profile()
+    ep = core.episode_dir(episode)
+    P = core.profile(core.episode_format(ep))
     W, H, FPS = P["width"], P["height"], P["fps"]
     FONT = c.get("video", {}).get("font", "DejaVu Sans")
     END_PAD, TITLE_MIN, LINE_GAP = P["end_pad"], P["title_min"], P["default_line_gap"]
@@ -116,8 +124,11 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None):
     MAXW = P["subtitles"]["max_words"]
     lstyles = line_styles()
 
-    ep = core.episode_dir(episode)
-    d = core.load_plan(ep)
+    if plan_file:
+        from .migrate import plan_to_v3
+        d = plan_to_v3(json.load(open(plan_file, encoding="utf-8")))
+    else:
+        d = core.load_plan(ep)
     aud = core.ep_path(ep, "audio")
     audio = os.path.join(aud, core.layout("narration") + ".mp3")
     trans = json.load(open(os.path.join(aud, core.layout("words")), encoding="utf-8"))
@@ -173,19 +184,24 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None):
         sh["b"] = total_audio if n == len(shots) - 1 else mid(hi)
 
     tmp = tempfile.mkdtemp()
+    # decode the narration once; pieces are cut from it sample-accurately
+    audio_wav = os.path.join(tmp, "narration.wav")
+    run(["ffmpeg", "-v", "error", "-y", "-i", audio, "-ac", "2", "-ar", "48000", audio_wav])
     pieces, clips, ev, remap = [], [], [], []
+    kinds = []        # per piece: ("narration", seconds) or ("other", 0)
     t = [0.0]
     line_start, scene_start, frame_start = {}, {}, {}
 
-    def piece(args_):
+    def piece(args_, kind="other", dd=0.0):
         p = os.path.join(tmp, f"a{len(pieces):03d}.wav")
         run(["ffmpeg", "-v", "error", "-y", *args_, "-ac", "2", "-ar", "48000", p])
         pieces.append(p)
+        kinds.append((kind, dd))
 
     def add_audio(a, b):
         if b - a < 0.01:   # a line at the very end of a frame: do not cut an empty piece
             return
-        piece(["-ss", f"{a:.3f}", "-to", f"{b:.3f}", "-i", audio])
+        piece(["-ss", f"{a:.3f}", "-to", f"{b:.3f}", "-i", audio_wav], "narration", b - a)
         remap.append((a, b, t[0]))
         t[0] += b - a
 
@@ -273,35 +289,49 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None):
         if o < 3:
             o, shots[n]["transition"] = 0, ("cut", 0.0)
         ovl[n] = o
-    for n, sh in enumerate(shots):
-        cpath = os.path.join(tmp, f"v{n:02d}.mp4")
-        img = core.ep_path(ep, "frames", sh["frame"])
-        if not os.path.exists(img):
-            raise SystemExit(T(f"Missing frame: {core.layout('frames')}/{sh['frame']} (run 'series frames' first)",
-                               f"Kare eksik: {core.layout('frames')}/{sh['frame']} (önce 'series frames' çalıştır)"))
-        before = ovl[n] // 2
-        after = (ovl[n + 1] - ovl[n + 1] // 2) if n + 1 < len(shots) else 0
-        render_shot(img, sh["f1"] - sh["f0"] + before + after, sh["motion"], cpath, W, H, FPS)
-        clips.append((cpath, sh["f1"] - sh["f0"] + before + after))
     vj, aj = os.path.join(tmp, "v.mp4"), os.path.join(tmp, "a.wav")
-    fg, ins_v = [], []
-    for n, (cp, fr) in enumerate(clips):
-        ins_v += ["-i", cp]
-        fg.append(f"[{n}:v]fps={FPS},settb=1/{FPS},format=yuv420p[c{n}]")
-    cur = "[c0]"
-    length = clips[0][1]
-    for n in range(1, len(clips)):
-        o = ovl[n]
-        if o:
-            fg.append(f"{cur}[c{n}]xfade=transition={shots[n]['transition'][0]}:duration={o / FPS:.4f}:"
-                      f"offset={(length - o) / FPS:.4f},settb=1/{FPS}[x{n}]")
-        else:
-            fg.append(f"{cur}[c{n}]concat=n=2:v=1:a=0,settb=1/{FPS}[x{n}]")
-        cur = f"[x{n}]"
-        length += clips[n][1] - o
-    graph = ";\n".join(fg) + (f";\n{cur}null[vo]" if len(clips) > 1 else ";\n[c0]null[vo]")
-    run(["ffmpeg", "-v", "error", "-y", *ins_v, "-filter_complex", graph, "-map", "[vo]",
-         "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", vj])
+    if not audio_only:
+        for n, sh in enumerate(shots):
+            cpath = os.path.join(tmp, f"v{n:02d}.mp4")
+            img = core.ep_path(ep, "frames", sh["frame"])
+            if not os.path.exists(img):
+                raise SystemExit(T(f"Missing frame: {core.layout('frames')}/{sh['frame']} (run 'series frames' first)",
+                                   f"Kare eksik: {core.layout('frames')}/{sh['frame']} (önce 'series frames' çalıştır)"))
+            before = ovl[n] // 2
+            after = (ovl[n + 1] - ovl[n + 1] // 2) if n + 1 < len(shots) else 0
+            render_shot(img, sh["f1"] - sh["f0"] + before + after, sh["motion"], cpath, W, H, FPS)
+            clips.append((cpath, sh["f1"] - sh["f0"] + before + after))
+        fg, ins_v = [], []
+        for n, (cp, fr) in enumerate(clips):
+            ins_v += ["-i", cp]
+            fg.append(f"[{n}:v]fps={FPS},settb=1/{FPS},format=yuv420p[c{n}]")
+        cur = "[c0]"
+        length = clips[0][1]
+        for n in range(1, len(clips)):
+            o = ovl[n]
+            if o:
+                fg.append(f"{cur}[c{n}]xfade=transition={shots[n]['transition'][0]}:duration={o / FPS:.4f}:"
+                          f"offset={(length - o) / FPS:.4f},settb=1/{FPS}[x{n}]")
+            else:
+                fg.append(f"{cur}[c{n}]concat=n=2:v=1:a=0,settb=1/{FPS}[x{n}]")
+            cur = f"[x{n}]"
+            length += clips[n][1] - o
+        graph = ";\n".join(fg) + (f";\n{cur}null[vo]" if len(clips) > 1 else ";\n[c0]null[vo]")
+        run(["ffmpeg", "-v", "error", "-y", *ins_v, "-filter_complex", graph, "-map", "[vo]",
+             "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", vj])
+    # narration next to a line/silence is cut at a word tail: short fades so it does not click
+    for i, (kind, dd) in enumerate(kinds):
+        if kind != "narration" or dd < 0.05:
+            continue
+        af = []
+        if i > 0 and kinds[i - 1][0] != "narration":
+            af.append(f"afade=t=in:d={CUT_FADE}")
+        if i + 1 < len(kinds) and kinds[i + 1][0] != "narration":
+            af.append(f"afade=t=out:st={dd - CUT_FADE:.4f}:d={CUT_FADE}")
+        if af:
+            q = pieces[i][:-4] + "_f.wav"
+            run(["ffmpeg", "-v", "error", "-y", "-i", pieces[i], "-af", ",".join(af), q])
+            pieces[i] = q
     al = os.path.join(tmp, "a.txt")
     open(al, "w").write("".join(f"file '{p}'\n" for p in pieces))
     run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", al, "-c", "copy", aj])
@@ -315,11 +345,29 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None):
         elif "frame" in cp:
             x = frame_start[cp["frame"]]
         else:
-            x = new_time(next(w for w in words if w["text"] == cp["word"])["start"])
+            es = [w for w in words if w["text"] == cp["word"]]
+            if not es:
+                raise SystemExit(T(f"anchor word not found: {cp['word']!r}", f"çapa kelimesi bulunamadı: {cp['word']!r}"))
+            x = new_time(es[min(cp.get("n", 1), len(es)) - 1]["start"])   # "n": the n-th occurrence
         return max(0.0, x + offset)
 
     ins, fl, k = ["-i", aj], [], 1
+    duck_on = False
     if not no_sfx:
+        # ambience: a continuous bed over the whole video (or between anchors), faded in/out, looped
+        for o in d.get("ambience", []):
+            f = assets.sound_path(o["id"], "sfx", sfx_dir)
+            if not os.path.exists(f):
+                print(T("ambience file missing, skipped:", "ortam dosyası yok, atlandı:"), o["id"])
+                continue
+            t0 = anchor(o["start"], o.get("start_offset", 0)) if o.get("start") else 0.0
+            t1 = anchor(o["end"], o.get("end_offset", 0)) if o.get("end") else total
+            fd = float(o.get("fade", 1.2))
+            ms = int(t0 * 1000)
+            ins += ["-stream_loop", "-1", "-i", f]
+            fl.append(f"[{k}:a]aresample=48000,{STEREO},atrim=0:{max(0.1, t1 - t0):.3f},volume={o.get('volume', 0.3)},"
+                      f"afade=t=in:d={fd},afade=t=out:st={max(0, t1 - t0 - fd):.2f}:d={fd},adelay={ms}|{ms}[e{k}]")
+            k += 1
         for e in d.get("sfx", []):
             f = assets.sound_path(e["id"], "sfx", sfx_dir)
             if not os.path.exists(f):
@@ -327,7 +375,7 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None):
                 continue
             ms = int(anchor(e["anchor"], e.get("offset", 0)) * 1000)
             ins += ["-i", f]
-            fl.append(f"[{k}:a]aresample=48000,volume={e.get('volume', 0.5)},adelay={ms}|{ms}[e{k}]")
+            fl.append(f"[{k}:a]aresample=48000,{STEREO},volume={e.get('volume', 0.5)},adelay={ms}|{ms}[e{k}]")
             k += 1
         mz = d.get("music")
         if mz and os.path.exists(assets.sound_path(mz["id"], "music", sfx_dir)):
@@ -337,15 +385,27 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None):
                 b0 = anchor(mz["mute"][1]["anchor"], mz["mute"][1].get("offset", 0))
                 mute = f",volume=0:enable='between(t,{a0:.2f},{b0:.2f})'"
             ins += ["-stream_loop", "-1", "-i", assets.sound_path(mz["id"], "music", sfx_dir)]
-            fl.append(f"[{k}:a]aresample=48000,atrim=0:{total:.3f},volume={mz.get('volume', 0.12)}{mute},"
-                      f"afade=t=out:st={max(0, total-1.5):.2f}:d=1.5[e{k}]")
+            # lower the music under narration/lines (sidechain); replaces "mute". On with true or a non-empty dict
+            # {threshold, ratio, attack, release}; an empty {} is off (same as the source pipeline).
+            duck = mz.get("duck")
+            fl.append(f"[{k}:a]aresample=48000,{STEREO},atrim=0:{total:.3f},volume={mz.get('volume', 0.12)}{mute},"
+                      f"afade=t=out:st={max(0, total-1.5):.2f}:d=1.5[{'m' if duck else 'e'}{k}]")
+            if duck:
+                dk = duck if isinstance(duck, dict) else {}
+                fl.append(f"[m{k}][sc]sidechaincompress=threshold={dk.get('threshold', 0.015)}:ratio={dk.get('ratio', 6)}:"
+                          f"attack={dk.get('attack', 25)}:release={dk.get('release', 450)}:makeup=1[e{k}]")
+                duck_on = True
             k += 1
         elif mz:
             print(T("music file missing, skipped:", "müzik dosyası yok, atlandı:"), mz["id"])
     tags = "".join(f"[e{i}]" for i in range(1, k))
     lufs = c.get("video", {}).get("target_lufs", -14)
-    fl.append(f"[0:a]{tags}amix=inputs={k}:normalize=0:duration=first,"
-              f"loudnorm=I={lufs}:TP=-1.5:LRA=11,alimiter=limit=0.95[m]")
+    fl.append(f"[0:a]{STEREO}" + (",asplit=2[a0][sc]" if duck_on else "[a0]"))
+    tags = "[a0]" + tags
+    fl.append(f"{tags}amix=inputs={k}:normalize=0:duration=first,"
+              f"loudnorm=I={lufs}:TP=-3:LRA=11,aresample=48000,{STEREO},alimiter=limit=0.63:level=disabled[m]")
+    # The old setting (TP -1.5, limit 0.95, auto level) let the final file reach +5 dBFS true peak. AAC overshoots
+    # sharp sfx hits by 2-3 dB, so the limit leaves room (-4 dBFS) and auto level is off.
     mixed = os.path.join(tmp, "mix.wav")
     run(["ffmpeg", "-v", "error", "-y", *ins, "-filter_complex", ";".join(fl), "-map", "[m]", "-ar", "48000", mixed])
 
@@ -402,9 +462,26 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None):
     ev = [(style(st, a, b), a, b, tx) for st, a, b, tx in ev]
     open(ass, "w", encoding="utf-8").write(head + "\n".join(
         f"Dialogue: 0,{ts(a)},{ts(b)},{st},,0,0,0,,{tx}" for st, a, b, tx in ev) + "\n")
+    if audio_only:
+        src = video or out
+        if not os.path.exists(src):
+            raise SystemExit(T(f"--audio-only: source video missing: {src}", f"--audio-only: kaynak video yok: {src}"))
+        old = os.path.join(tmp, "old.mp4")
+        shutil.copy(src, old)
+        dv = core.duration(old)
+        if abs(dv - total) > 0.15:
+            raise SystemExit(T(f"--audio-only: length mismatch (video {dv:.2f} s, plan {total:.2f} s); the plan changed "
+                               "after the video, a full render is needed",
+                               f"--audio-only: süre uyuşmuyor (video {dv:.2f} sn, plan {total:.2f} sn); plan videodan sonra "
+                               "değişmiş, tam render gerek"))
+        run(["ffmpeg", "-v", "error", "-y", "-i", old, "-i", mixed, "-map", "0:v", "-map", "1:a", "-shortest",
+             "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart", out])
+        print(T("ok (audio rebuilt)", "ok (ses yenilendi)"), out, round(total, 2), T("s", "sn"))
+        return out, None
     fade = f"fade=t=out:st={max(0, total - END_FADE):.3f}:d={END_FADE}," if END_FADE > 0 else ""
     run(["ffmpeg", "-v", "error", "-y", "-i", vj, "-i", mixed, "-vf", f"{fade}ass={ass}", "-map", "0:v", "-map", "1:a",
-         "-shortest", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-c:a", "aac", "-b:a", "192k",
+         "-shortest", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+         "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
          "-movflags", "+faststart", out])
     timing = {"video": os.path.basename(out), "duration": round(total, 3), "fps": FPS, "end_fade": END_FADE,
               "frames": [{"scene": sh["scene"], "frame": sh["frame"], "motion": sh["motion"],
@@ -419,7 +496,7 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None):
 
 
 def cmd(a):
-    assemble(a.episode, a.out, a.no_sfx, a.audio_assets)
+    assemble(a.episode, a.out, a.no_sfx, a.audio_assets, plan_file=a.plan, audio_only=a.audio_only, video=a.video)
     return 0
 
 
@@ -427,4 +504,10 @@ def add_parser(sp):
     p = sp.add_parser("assemble", help=T("build the video from frames + audio", "kareler + seslerden videoyu kur"))
     p.add_argument("episode"); p.add_argument("--out"); p.add_argument("--audio-assets")
     p.add_argument("--no-sfx", action="store_true")
+    p.add_argument("--plan", help=T("use this plan file instead of the episode plan (A/B tests)",
+                                    "bölüm planı yerine bu plan dosyası (A/B denemeleri)"))
+    p.add_argument("--audio-only", action="store_true",
+                   help=T("keep the picture of the existing video, rebuild only the mix", "mevcut videonun görüntüsünü koru, yalnız karışımı yenile"))
+    p.add_argument("--video", help=T("source video for --audio-only (default: --out / output/<episode>.mp4)",
+                                     "--audio-only için kaynak video (varsayılan: --out / output/<bölüm>.mp4)"))
     p.set_defaults(func=cmd)

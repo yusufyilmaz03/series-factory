@@ -226,7 +226,7 @@ def derived():
         if any(n in published for n, _ in eps):
             st = "published"
         elif eps:
-            st = "video" if all(a == "video" for _, a in eps) else "in_production"
+            st = "video" if all(a in ("video", "carousel") for _, a in eps) else "in_production"
         else:
             st = "waiting" if is_ready(o, {}, full) else "used"
         if st == "used" and not note:
@@ -248,7 +248,7 @@ def derived():
 def row(r):
     eps = r["episodes"]
     if eps:
-        d = state_name(r["status"]) + " " + ",".join(e["no"] if e["stage"] == "video" else f"{e['no']}:{catalog.stage_name(e['stage'])}"
+        d = state_name(r["status"]) + " " + ",".join(e["no"] if e["stage"] in ("video", "carousel") else f"{e['no']}:{catalog.stage_name(e['stage'])}"
                                                      for e in eps)
     elif r["status"] == "used":
         d = state_name("used") + ": " + r["note"][:31]

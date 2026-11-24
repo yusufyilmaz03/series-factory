@@ -49,12 +49,18 @@ Repodaki uydurma örnek seriyle dene: `series --series example_series status`, `
 | Kontrol | `series check <bölüm>`, `series strips <bölüm>` | — |
 | Toplu | `series batch 013-018`, `series produce <bölüm>` | — |
 | Seri | `series status`, `series ideas`, `series todo`, `series canon`, `series docs`; kartlar: `series character / location / sound` | — |
-| Yayın | `series publish list / add`, `series drive prepare` | — |
+| Formatlar | `series formats [organize / set]`, `series carousel <bölüm>`, `series gemini prepare / collect` (Gemini web) | karusel için Pillow |
+| Takvim | `series calendar [--stock] [--html f]`, `series schedule add / move / remove / auto`, `series views`, `series ui` | — |
+| Yayın | `series publish list / add / sync`, `series drive prepare` | — |
 
 `series help` iş → komut listesini basar. Komutlar kısa özet basar; çoğu `--json` ve `--dry-run` (maliyet tahmini,
 hiçbir şey üretmeden) destekler ve onay noktalarında durur; ileride ajanlara hazır.
 
 ## Formatlar
+
+Bir serinin birden fazla bölüm formatı olabilir (ör. normal bölüm ve 30 sn'lik kısa); her birinin klasörü, çıktısı (video
+ve/veya karusel), kelime sınırı ve yayın kuşağı vardır. `series calendar` ve `series ui` neyin ne zaman yayınlandığını,
+neyin planlı olduğunu ve boşlukları gösterir. Bkz. [docs/tr/formatlar-ve-takvim.md](docs/tr/formatlar-ve-takvim.md).
 
 Seri bir format profili seçer: `vertical_short` (45–75 sn, 1080×1920; ayarlı) ya da `horizontal_long` (8–15 dk,
 1920×1080; iskelet, 2. aşama). Boyut, fps, altyazı yerleşimi ve uzunluk kuralları profilden gelir.

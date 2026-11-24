@@ -8,13 +8,13 @@ import glob, json, os, re, unicodedata
 from . import core
 from .i18n import T
 
-STAGES = ("script", "frames", "frames_done", "audio", "video")
+STAGES = ("script", "frames", "frames_done", "audio", "carousel", "video")
 
 
 def stage_name(s):
     return {"script": T("script", "senaryo"), "frames": T("frames", "kareler"),
             "frames_done": T("frames done", "kareler tamam"), "audio": T("audio", "ses"),
-            "video": T("video", "video")}.get(s, s)
+            "video": T("video", "video"), "carousel": T("carousel", "karusel")}.get(s, s)
 
 
 def nfc(s):
@@ -32,17 +32,16 @@ def fold(s):
 
 def episodes():
     out = []
-    base = core.episodes_dir()
-    for d in sorted(os.listdir(base)) if os.path.isdir(base) else []:
-        p = os.path.join(base, d, core.layout("plan"))
-        if not re.match(r"\d{3}", d) or not os.path.exists(p):
+    for path, fmt in core.episode_folders():
+        d = os.path.basename(path)
+        if not os.path.exists(os.path.join(path, core.layout("plan"))):
             continue
         try:
-            j = core.load_plan(os.path.join(base, d))
+            j = core.load_plan(path)
         except Exception as e:
-            out.append({"folder": d, "error": str(e)})
+            out.append({"folder": d, "path": path, "error": str(e)})
             continue
-        out.append({"folder": d, "path": os.path.join(base, d), "plan": j})
+        out.append({"folder": d, "path": path, "plan": j, "format": fmt or core.episode_format(path, j)})
     return out
 
 
@@ -61,8 +60,19 @@ def episode_summary(b):
             dur = f"{z.get('duration', z.get('sure')):.1f}"
         except Exception:
             pass
+    fmt = b.get("format") or core.episode_format(ep, j)
+    outs_wanted = core.format_outputs(fmt)
+    slides = sorted(glob.glob(core.ep_path(ep, "carousel", "*.jpg")))
+    slides = [x for x in slides if not os.path.basename(x).startswith("_")]
+    n_slides = len((j.get("carousel") or {}).get("slides", []))
+    carousel_done = bool(slides) and (not n_slides or len(slides) >= n_slides)
+    have_out = {"video": bool(last), "carousel": carousel_done}
+    rule = any if core.formats().get(fmt, {}).get("ready") == "any" else all
+    done = rule(have_out.get(o, False) for o in outs_wanted)
     if last:
         stage = "video"
+    elif carousel_done:
+        stage = "carousel"
     elif audio:
         stage = "audio"
     elif frames and have == len(frames):
@@ -72,7 +82,8 @@ def episode_summary(b):
     else:
         stage = "script"
     return {"no": b["folder"][:4].rstrip("_"), "title": j.get("title", ""), "idea": j.get("source_idea") or "",
-            "frames": f"{have}/{len(frames)}", "stage": stage, "duration": dur, "video": last}
+            "format": fmt, "frames": f"{have}/{len(frames)}", "stage": stage, "duration": dur, "video": last,
+            "carousel": len(slides), "outputs": outs_wanted, "ready": done}
 
 
 def episode_no(folder):

@@ -153,3 +153,73 @@ def test_repository_is_leak_free():
     r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "leak_check.py")], cwd=ROOT,
                        capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
+
+
+# ---------------------------------------------------------------- 2026-11: ambience / duck / carousel, formats, calendar
+def test_migrate_ambience_duck_carousel():
+    d = migrate.plan_to_v3({"format": 2, "sahneler": [], "efektler": [{"ad": "x", "capa": {"kelime": "a", "n": 2}, "kayma": 0.1}],
+                            "ortam": [{"ad": "room", "ses": 0.2, "bas": {"kelime": "Dış."}, "son": {"kelime": "İç."}, "fade": 1.5}],
+                            "muzik": {"ad": "m", "ses": 0.1, "kisma": {"esik": 0.02, "oran": 5}},
+                            "karusel": {"ust": "K", "baslik": "B", "slaytlar": [{"kare": "1.jpg", "tip": "kapak", "alt": "a"},
+                                                                                {"kare": "2.jpg", "no": 1, "baslik": "t", "metin": "m", "kirp": 0.3}]}})
+    assert d["sfx"][0]["anchor"] == {"word": "a", "n": 2}
+    assert d["ambience"] == [{"id": "room", "volume": 0.2, "start": {"word": "Dış."}, "end": {"word": "İç."}, "fade": 1.5}]
+    assert d["music"]["duck"] == {"threshold": 0.02, "ratio": 5} and "kisma" not in d["music"]
+    assert d["carousel"]["slides"][0] == {"frame": "1.jpg", "type": "cover", "subtitle": "a"}
+    assert d["carousel"]["slides"][1]["crop"] == 0.3 and d["carousel"]["kicker"] == "K"
+
+
+def _series_with_formats(tmp_path):
+    import shutil
+    root = tmp_path / "s"
+    shutil.copytree(EXAMPLE, root)
+    c = json.loads((root / "series.json").read_text())
+    c["timezone"] = "UTC"
+    c["formats"] = {"main": {"label": "Episode", "folder": "main", "idea_types": ["G"], "default": True,
+                             "counter": {"label": "Episode {n}"}},
+                    "short": {"label": "Short", "folder": "short", "idea_types": ["H"], "counter": {"label": "Short {n}"}}}
+    c["schedule"] = {"slots": {"noon": {"label": "Noon", "time": "12:00", "days": "daily", "formats": ["short"]},
+                               "eve": {"label": "Evening", "time": "18:00", "days": "daily", "formats": ["main"]}}}
+    (root / "series.json").write_text(json.dumps(c, ensure_ascii=False))
+    ep = root / "episodes" / "001_kayip_kibrit"
+    plan = json.loads((ep / "script.json").read_text())
+    for no, slug, idea in (("002", "iki", "G-02"), ("003", "uc", "H-01")):
+        e = root / "episodes" / f"{no}_{slug}"
+        (e / "output").mkdir(parents=True)
+        p = dict(plan, episode_no=int(no), source_idea=idea, title=slug)
+        (e / "script.json").write_text(json.dumps(p, ensure_ascii=False))
+        (e / "output" / f"{no}_{slug}.mp4").write_bytes(b"x")
+    return root
+
+
+def run_on(root, *args):
+    env = dict(os.environ, SERIES_OFFLINE="1")
+    env.pop("SERIES_ROOT", None)
+    return subprocess.run([sys.executable, "-m", "series_factory", "--series", str(root), "--lang", "en", *args],
+                          cwd=ROOT, env=env, capture_output=True, text=True)
+
+
+def test_formats_organize_and_calendar(tmp_path):
+    root = _series_with_formats(tmp_path)
+    r = run_on(root, "formats", "organize")
+    assert r.returncode == 0, r.stderr
+    assert (root / "episodes" / "main" / "002_iki").is_dir() and (root / "episodes" / "short" / "003_uc").is_dir()
+    r = run_on(root, "formats", "--json")
+    d = json.loads(r.stdout)
+    assert d["main"]["ready"] == 1 and d["short"]["ready"] == 1
+    import datetime
+    day = (datetime.date.today() + datetime.timedelta(days=2)).isoformat()
+    r = run_on(root, "schedule", "add", "003", "--date", day)
+    assert r.returncode == 0 and "12:00" in r.stdout, r.stdout + r.stderr
+    r = run_on(root, "schedule", "add", "002", "--date", day, "--slot", "noon")
+    assert r.returncode != 0                         # slot taken
+    r = run_on(root, "calendar", "--json", "--weeks", "1", "--from", day)
+    cal = json.loads(r.stdout)
+    rows = cal["days"][0]["rows"]
+    assert [x["status"] for x in rows] == ["planned", "gap"]
+    assert rows[0]["label"] == "Short 1" and rows[0]["slot"] == "noon"
+    assert cal["stock"]["eve"]["ready"] == 1 and cal["stock"]["noon"]["ready"] == 0
+    r = run_on(root, "schedule", "auto", "--from", day, "--until", day)
+    assert r.returncode == 0 and "002" in r.stdout
+    sched = json.loads((root / "publish" / "schedule.json").read_text())
+    assert {e["episode"] for e in sched["entries"]} == {"002", "003"}

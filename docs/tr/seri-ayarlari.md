@@ -36,6 +36,8 @@ serim/
 | `docs` | `canon` (karakter dosyası), `script_context` (senaristin aldığı doküman önekleri), `generated` (üretilen görünümlerin adları), `project_paths` (doküman → Claude proje yolu), `generated_title_prefix` |
 | `context` | `always`: `series context`'te hep bulunan karakterler; `narrator_strip`: anlatıcının kanon bölümünden çıkarılan regex |
 | `rules` | yazım kontrolleri: `emotion_tags`, `max_ellipsis`, `address_pattern`, `max_hashtags`, `require_sponsor_slot`, `custom` (aşağıda) |
+| `formats`, `schedule` | bölüm formatları ve yayın kuşakları, bkz. [formatlar-ve-takvim.md](formatlar-ve-takvim.md) |
+| `carousel` | slayt görünümü: `width`, `height`, `font`, `accent` / `dark` / `text` renkleri, `handle`, `signature`, `quality` |
 | `publish` | `platforms`, `cover_file` (ör. `"{no}_kapak.jpg"`) |
 | `library` | üretilen sayfa/planların dosya adı parçaları: `sheet_suffix`, `master_suffix` |
 | `subtitles` | `model`: opsiyonel YOLO11n ONNX dosyasının yolu |

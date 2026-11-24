@@ -13,7 +13,7 @@ os.makedirs(dst)
 ign = shutil.ignore_patterns(".env", "_yedek_*", "__pycache__", "krokiler", ".DS_Store")
 shutil.copytree(os.path.join(src, "pipeline"), os.path.join(dst, "pipeline"), ignore=ign)
 for d in ("assets", "kayit", "Dokümanlar", "yayin"):
-    shutil.copytree(os.path.join(src, d), os.path.join(dst, d), ignore=shutil.ignore_patterns("_yedek_*", ".DS_Store"))
+    shutil.copytree(os.path.join(src, d), os.path.join(dst, d), symlinks=True, ignore=shutil.ignore_patterns("_yedek_*", ".DS_Store"))
 E = os.path.join(src, "episodes")
 for ep in sorted(os.listdir(E)):
     sp = os.path.join(E, ep)
