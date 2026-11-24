@@ -29,6 +29,9 @@ farklı kuşaklarında yayınlayabilir. Bunların hiçbiri koda gömülü değil
 | `profile`, `profile_overrides` | bu format için farklı boyut / altyazı düzeni |
 | `counter` | takvimdeki numara: `{"label": "Kısa {n}", "start": 1}` (takvim sırasına göre sayılır) |
 | `platforms` | bu formatın yayınlandığı platformlar (varsayılan: `publish.platforms`) |
+| `sequential` | numaralı başlıklar: `series schedule auto` bu formatın takvimdeki bir bölümünden önceye bölüm koymaz |
+| `start` | `series schedule auto`un bu format için kullanabileceği ilk tarih (YYYY-AA-GG) |
+| `order` | isteğe bağlı yayın sırası, `series schedule auto` için (bölüm numaraları; kalanlar numara sırasıyla) |
 | `default` | klasörü, planı ve olayı bir şey söylemeyen bölümün formatı |
 
 Bir bölümün formatı sırayla: format klasörü, plandaki `episode_format`, olay tipi, varsayılan format.
@@ -57,6 +60,7 @@ taşır (yayın kaydındaki yollar da güncellenir); `series formats set 087 kis
 | `slots.<anahtar>.weekday_formats` | isteğe bağlı: hangi gün hangi format(lar) (yoksa en uzun süredir kullanılmayan format) |
 | `horizon_days` | `series schedule auto` varsayılan olarak kaç gün ileriye planlar |
 | `assume_published` | saati geçmiş planlı gönderi yayında sayılır (zamanlayıcı zamanında paylaşır) |
+| `exclude` | yayına hiç önerilmeyecek bölümler (ör. alternatif kurgu) |
 
 ## Takvim nereden gelir
 

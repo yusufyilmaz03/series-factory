@@ -29,6 +29,9 @@ in several daily slots. None of this is fixed in code: it lives in `series.json`
 | `profile`, `profile_overrides` | a different size / subtitle layout for this format |
 | `counter` | on-calendar numbering: `{"label": "Short {n}", "start": 1}` (counted in calendar order) |
 | `platforms` | where this format is posted (default: `publish.platforms`) |
+| `sequential` | numbered titles: `series schedule auto` never puts an episode before one of this format already on the calendar |
+| `start` | first date `series schedule auto` may use for this format (YYYY-MM-DD) |
+| `order` | optional publishing order for `series schedule auto` (episode numbers; the rest follow by number) |
 | `default` | the format of an episode whose folder, plan and idea say nothing |
 
 An episode's format is, in order: its format folder, the plan's `episode_format`, its idea type, the default.
@@ -57,6 +60,7 @@ folders (publish log paths follow); `series formats set 087 short` moves one epi
 | `slots.<key>.weekday_formats` | optional: which format(s) a given weekday takes (else the format used longest ago) |
 | `horizon_days` | how far `series schedule auto` plans by default |
 | `assume_published` | a scheduled post whose time has passed counts as published (the scheduler posts on time) |
+| `exclude` | episodes never offered for publishing (e.g. an alternative cut) |
 
 ## Where the calendar comes from
 

@@ -230,10 +230,16 @@ def allowed_formats(slot, d):
 
 
 # ---------------------------------------------------------------- stock
+def excluded():
+    """Episodes never offered for publishing (series.json schedule.exclude, e.g. an alternative cut)."""
+    return set(sched_cfg().get("exclude", []))
+
+
 def unassigned_ready(eps, ents, fmt):
-    taken = {e["episode"] for e in ents}
-    return sorted((o for o in eps.values() if o["format"] == fmt and o["ready"] and o["no"] not in taken),
-                  key=lambda o: o["no"])
+    taken = {e["episode"] for e in ents} | excluded()
+    order = [str(x) for x in core.formats().get(fmt, {}).get("order", [])]   # optional preferred publishing order
+    rank = lambda o: (order.index(o["no"]) if o["no"] in order else len(order), o["no"])  # noqa: E731
+    return sorted((o for o in eps.values() if o["format"] == fmt and o["ready"] and o["no"] not in taken), key=rank)
 
 
 def stock_data(eps=None, ents=None):
@@ -247,7 +253,7 @@ def stock_data(eps=None, ents=None):
     today = now().date()
     out = {}
     for k, s in slots().items():
-        taken = {e["episode"] for e in ents}
+        taken = {e["episode"] for e in ents} | excluded()
         per_fmt = {}
         for f in s["formats"]:
             mine = [o for o in eps.values() if o["format"] == f and o["no"] not in taken]
@@ -442,8 +448,9 @@ def auto(a):
     ents = entries(eps)
     taken = {e["episode"] for e in ents}
     filled = {(e["date"], e["slot"]) for e in ents}
-    last_used = {}
+    last_used, last_of = {}, {}
     for e in ents:
+        last_of[e["format"]] = max(last_of.get(e["format"], ""), e["date"])
         last_used[(e["slot"], e["format"])] = max(last_used.get((e["slot"], e["format"]), ""), e["date"])
     new, S = [], slots()
     pool = {f: [o["no"] for o in unassigned_ready(eps, ents, f)] for f in core.formats()}
@@ -453,19 +460,26 @@ def auto(a):
         for d in slot_days(k, d0, d1):
             if (d.isoformat(), k) in filled:
                 continue
+            def started(x):
+                f_ = core.formats().get(x, {})
+                if d.isoformat() < str(f_.get("start", "")):
+                    return False
+                # sequential formats (numbered titles) never go before an episode of theirs already on the calendar
+                return not f_.get("sequential") or d.isoformat() > last_of.get(x, "")
             wf = S[k].get("weekday_formats", {}).get(DAYS[d.weekday()])
             if wf:      # fixed day: the first format of the day's list that has stock (the rest are fallbacks)
-                f = next((x for x in wf if pool.get(x)), None)
+                f = next((x for x in wf if pool.get(x) and started(x)), None)
                 if not f:
                     continue
             else:       # rotation: the format used longest ago in this slot
-                cand = [x for x in S[k]["formats"] if pool.get(x)]
+                cand = [x for x in S[k]["formats"] if pool.get(x) and started(x)]
                 if not cand:
                     continue
                 f = min(cand, key=lambda x: last_used.get((k, x), ""))
             no = pool[f].pop(0)
             taken.add(no)
             last_used[(k, f)] = d.isoformat()
+            last_of[f] = max(last_of.get(f, ""), d.isoformat())
             new.append({"episode": no, "date": d.isoformat(), "time": S[k]["time"], "slot": k})
     for e in sorted(new, key=lambda e: (e["date"], e["time"])):
         print(f"{'[dry-run] ' if a.dry_run else ''}{e['date']} {e['time']} {S[e['slot']].get('label', e['slot'])}: "
