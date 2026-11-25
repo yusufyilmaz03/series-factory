@@ -6,10 +6,10 @@
 There is no database: every request reads the series folder, and the few writes (planning an episode onto a date)
 go through the same functions as the CLI, so the folder stays the single source of truth.
 """
-import argparse, contextlib, datetime, io, json, mimetypes, os, sys, threading, urllib.parse, webbrowser
+import argparse, contextlib, datetime, io, json, mimetypes, os, shlex, sys, threading, urllib.parse, webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import catalog, core, publish, schedule
+from . import catalog, core, jobs, publish, schedule
 from .i18n import T, lang
 
 HERE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui")
@@ -116,6 +116,14 @@ class Handler(BaseHTTPRequestHandler):
                 d1 = schedule.parse_date(q["to"]) if q.get("to") else None
                 with self.lock:
                     return self.send(200, snapshot(d0, d1))
+            if u.path == "/api/jobs":
+                js = jobs.all_jobs()[:int(q.get("n", 20))]
+                for j in js:
+                    if j["state"] in ("running", "failed", "interrupted"):
+                        j["log"] = jobs.tail(j["id"], 12)
+                return self.send(200, {"jobs": js, "worker": bool(getattr(self.server, "jobs_on", False))})
+            if u.path == "/api/jobs/log":
+                return self.send(200, {"id": q.get("id"), "log": jobs.tail(q.get("id", ""), int(q.get("n", 200)))})
             if u.path.startswith("/media/"):
                 return self.media(u.path)
             return self.send(404, {"error": "not found"})
@@ -160,6 +168,16 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(403, {"error": "origin"})
         n = int(self.headers.get("Content-Length") or 0)
         body = json.loads(self.rfile.read(n) or b"{}")
+        if u.path in ("/api/jobs", "/api/jobs/cancel"):
+            try:
+                if u.path == "/api/jobs/cancel":
+                    return self.send(200, {"ok": True, "job": jobs.cancel(str(body.get("id", "")))})
+                argv = body.get("argv") or shlex.split(str(body.get("cmd", "")))
+                if argv[:1] in (["series"], ["./seri"], ["seri"]):
+                    argv = argv[1:]
+                return self.send(200, {"ok": True, "job": jobs.add(argv, by="ui")})
+            except (SystemExit, ValueError) as e:
+                return self.send(400, {"ok": False, "error": str(getattr(e, "code", e))})
         if u.path != "/api/schedule":
             return self.send(404, {"error": "not found"})
         op = body.get("op")
@@ -180,24 +198,33 @@ class Handler(BaseHTTPRequestHandler):
         return self.send(200 if ok else 400, {"ok": ok, "output": out})
 
 
-def serve(port=8765, open_browser=True):
+def serve(port=8765, open_browser=True, run_jobs=True):
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     url = f"http://127.0.0.1:{port}/"
     print(T(f"series ui: {url}  (Ctrl+C to stop)", f"series ui: {url}  (durdurmak için Ctrl+C)"))
+    stop = None
+    if run_jobs:                                   # queued jobs (series jobs add ...) run on this computer
+        stop = jobs.start_thread()
+        srv.jobs_on = True
+        print(T(f"job worker on: {core.rel(jobs.jobs_dir())}", f"iş çalıştırıcı açık: {core.rel(jobs.jobs_dir())}"))
     if open_browser:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
         pass
+    finally:
+        if stop:
+            stop.set()
 
 
 def cmd(a):
-    serve(a.port, not a.no_open)
+    serve(a.port, not a.no_open, not a.no_jobs)
     return 0
 
 
 def add_parser(sp):
     p = sp.add_parser("ui", help=T("local screen: calendar, episodes, stock, ideas", "yerel ekran: takvim, bölümler, stok, olaylar"))
     p.add_argument("--port", type=int, default=8765); p.add_argument("--no-open", action="store_true")
+    p.add_argument("--no-jobs", action="store_true", help=T("do not run queued jobs", "sıradaki işleri çalıştırma"))
     p.set_defaults(func=cmd)

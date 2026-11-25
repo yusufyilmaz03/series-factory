@@ -53,6 +53,7 @@ Repodaki uydurma örnek seriyle dene: `series --series example_series status`, `
 | Toplu | `series batch 013-018`, `series produce <bölüm>` | — |
 | Seri | `series status`, `series ideas`, `series todo`, `series canon`, `series docs`; kartlar: `series character / location / sound` | — |
 | Formatlar | `series formats [organize / set]`, `series carousel <bölüm>`, `series gemini prepare / collect` (Gemini web) | karusel için Pillow |
+| İşler | `series jobs add <komut>`, `series jobs list / log / cancel` (komutları telefondan ya da kum havuzundan seri bilgisayarında çalıştır; çalıştırıcı `series ui` içinde; [doküman](docs/tr/isler.md)) | — |
 | Takvim | `series calendar [--stock] [--html f]`, `series schedule add / move / remove / auto`, `series views`, `series ui` | — |
 | Yayın | `series publish list / add / sync`, `series drive prepare` | — |
 

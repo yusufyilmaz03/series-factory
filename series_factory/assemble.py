@@ -144,6 +144,7 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None, plan_file=None,
     out = out or core.ep_path(ep, "output", os.path.basename(ep) + ("_cut.mp4" if explicit_cut and explicit_cut != "none"
                                                                      else ".mp4"))
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+    part = os.path.splitext(out)[0] + ".part.mp4"   # written first, renamed over out when complete
     total_audio = core.duration(audio)
 
     words = align_words(trans, " ".join(strip_tags(s["narration"]) for s in d["scenes"]))
@@ -498,14 +499,16 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None, plan_file=None,
                                f"--audio-only: süre uyuşmuyor (video {dv:.2f} sn, plan {total:.2f} sn); plan videodan sonra "
                                "değişmiş, tam render gerek"))
         run(["ffmpeg", "-v", "error", "-y", "-i", old, "-i", mixed, "-map", "0:v", "-map", "1:a", "-shortest",
-             "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart", out])
+             "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart", part])
+        os.replace(part, out)
         print(T("ok (audio rebuilt)", "ok (ses yenilendi)"), out, round(total, 2), T("s", "sn"))
         return out, None
     fade = f"fade=t=out:st={max(0, total - END_FADE):.3f}:d={END_FADE}," if END_FADE > 0 else ""
     run(["ffmpeg", "-v", "error", "-y", "-i", vj, "-i", mixed, "-vf", f"{fade}ass={ass}", "-map", "0:v", "-map", "1:a",
          "-shortest", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
          "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
-         "-movflags", "+faststart", out])
+         "-movflags", "+faststart", part])
+    os.replace(part, out)                          # an interrupted render never leaves a half video in place
     timing = {"video": os.path.basename(out), "duration": round(total, 3), "fps": FPS, "end_fade": END_FADE,
               "frames": [{"scene": sh["scene"], "frame": sh["frame"], "motion": sh["motion"],
                           "t0": round(sh["t0"], 3), "t1": round(sh["t1"], 3), "speech_end": round(sh["speech_end"], 3),

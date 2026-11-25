@@ -52,6 +52,9 @@ select,input{font:inherit;padding:5px 8px;border-radius:8px;border:1px solid var
 #drawer.open{transform:none}#drawer .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}#drawer .thumbs img{width:100%;border-radius:6px}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:9px;font-size:13px;display:none;z-index:20;max-width:80vw;white-space:pre-wrap}
 .muted{color:var(--mute)}.hidden{display:none}
+.jobform{display:flex;gap:8px;margin-bottom:14px}.jobform input{flex:1;font-family:ui-monospace,Menlo,monospace}
+.st-queued{color:var(--plan)}.st-running{color:var(--accent);font-weight:600}.st-done{color:var(--ok)}.st-failed,.st-interrupted{color:var(--warn);font-weight:600}.st-cancelled{color:var(--mute)}
+pre.log{margin:6px 0 0;padding:8px;background:var(--bg);border-radius:8px;font-size:11px;max-height:220px;overflow:auto;white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -70,12 +73,14 @@ const L = {tr:{calendar:"Takvim",episodes:"Bölümler",stock:"Stok",ideas:"Olayl
   auto:"Boşlukları doldur",published:"yayında",scheduled:"planlı",planned:"taslak",gap:"BOŞ",ready:"Hazır stok",notready:"hazır değil",
   week:"Hafta",perweek:"haftada",readyn:"hazır",prod:"üretimde",ideasw:"olay bekliyor",runsout:"Stok bitişi",firstgap:"İlk plansız gün",
   until:"Planlı son tarih",all:"Tümü",static:"salt okunur kopya",drop:"Buraya bırak",remove:"Plandan çıkar",frames:"Kareler",slides:"Karusel",
-  video:"Video",stage:"aşama",generated:"güncellendi",nothing:"Hazır stok yok",confirmauto:"Önümüzdeki 4 haftanın boş kuşakları hazır bölümlerle doldurulsun mu?"},
+  video:"Video",stage:"aşama",generated:"güncellendi",nothing:"Hazır stok yok",confirmauto:"Önümüzdeki 4 haftanın boş kuşakları hazır bölümlerle doldurulsun mu?",
+  jobs:"İşler",run:"Sıraya al",cancel:"Durdur",jobhint:"series komutu, ör. assemble 013 ya da batch 013-015 --only assemble",noworker:"Bu ekran iş çalıştırıcısız açılmış (--no-jobs): işler sırada bekler.",nojobs:"Henüz iş yok"},
  en:{calendar:"Calendar",episodes:"Episodes",stock:"Stock",ideas:"Ideas",todo:"TODO",today:"Today",prev:"◀ Prev",next:"Next ▶",
   auto:"Fill gaps",published:"published",scheduled:"scheduled",planned:"planned",gap:"EMPTY",ready:"Ready stock",notready:"not ready",
   week:"Week",perweek:"per week",readyn:"ready",prod:"in production",ideasw:"ideas waiting",runsout:"Stock runs out",firstgap:"First unplanned day",
   until:"Planned until",all:"All",static:"read-only copy",drop:"Drop here",remove:"Remove from plan",frames:"Frames",slides:"Carousel",
-  video:"Video",stage:"stage",generated:"updated",nothing:"No ready stock",confirmauto:"Fill the empty slots of the next 4 weeks with ready episodes?"}};
+  video:"Video",stage:"stage",generated:"updated",nothing:"No ready stock",confirmauto:"Fill the empty slots of the next 4 weeks with ready episodes?",
+  jobs:"Jobs",run:"Queue",cancel:"Stop",jobhint:"a series command, e.g. assemble 013 or batch 013-015 --only assemble",noworker:"This screen runs without the job worker (--no-jobs): jobs wait in the queue.",nojobs:"No jobs yet"}};
 let t = k => (L[(D&&D.lang)||"tr"]||L.tr)[k]||k;
 const STAGE = {tr:{script:"senaryo",frames:"kareler",frames_done:"kareler tamam",audio:"ses",carousel:"karusel",video:"video"},en:{}};
 const st = s => (STAGE[D.lang]||{})[s]||s;
@@ -93,9 +98,9 @@ async function post(body){ const r = await fetch("/api/schedule",{method:"POST",
 function render(){
   $("#title").textContent = D.series||"series-factory";
   $("#sub").textContent = `${t("generated")} ${D.generated.replace("T"," ")}` + (STATIC?` · ${t("static")}`:"");
-  $("#tabs").innerHTML = ["calendar","episodes","stock","ideas","todo"].map(k=>`<button class="${k==tab?"on":""}" data-t="${k}">${t(k)}</button>`).join("");
+  $("#tabs").innerHTML = ["calendar","episodes","stock","ideas","todo"].concat(STATIC?[]:["jobs"]).map(k=>`<button class="${k==tab?"on":""}" data-t="${k}">${t(k)}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;location.hash=tab;render();});
-  ({calendar,episodes,stock,ideas,todo})[tab]();
+  clearTimeout(window._jt); ({calendar,episodes,stock,ideas,todo,jobs})[tab]();
 }
 const epBy = () => Object.fromEntries(D.episodes.map(e=>[e.no,e]));
 function cardHTML(r, drag){
@@ -204,6 +209,27 @@ function ideas(){
 function todo(){
   const open = D.todo.filter(x=>!x.done);
   $("#main").innerHTML = `<table><tr><th>#</th><th></th></tr>${open.map(x=>`<tr><td>${x.id}</td><td>${esc(x.text)}</td></tr>`).join("")}</table>`;
+}
+async function jobs(){
+  if(STATIC) return;
+  const J = await (await fetch("/api/jobs")).json();
+  if(tab!="jobs") return;
+  const keep = $("#jobcmd") ? $("#jobcmd").value : "";
+  let h = `<div class="jobform"><input id="jobcmd" placeholder="${esc(t("jobhint"))}" value="${esc(keep)}"><button class="btn primary" id="jobrun">${t("run")}</button></div>`;
+  if(!J.worker) h += `<p class="notready">${t("noworker")}</p>`;
+  h += J.jobs.length ? `<table><tr><th>${t("jobs")}</th><th></th><th></th><th></th></tr>` + J.jobs.map(j=>`<tr><td class="muted" style="white-space:nowrap">${esc(j.id.slice(4,8).replace(/(..)(..)/,"$2.$1")+" "+j.id.slice(9,11)+":"+j.id.slice(11,13))}</td>
+    <td><code>series ${esc(j.argv.join(" "))}</code>${j.log?`<pre class="log">${esc(j.log)}</pre>`:""}</td>
+    <td class="st-${j.state}">${esc(j.state)}${j.seconds!=null?` · ${j.seconds} sn`:""}</td>
+    <td>${["queued","running"].includes(j.state)?`<button class="btn" data-cancel="${j.id}">${t("cancel")}</button>`:""}</td></tr>`).join("") + `</table>` : `<p class="muted">${t("nojobs")}</p>`;
+  $("#main").innerHTML = h;
+  const go = async()=>{ const c=$("#jobcmd").value.trim(); if(!c) return;
+    const r = await (await fetch("/api/jobs",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cmd:c})})).json();
+    toast(r.ok?`✓ ${r.job.id}`:(r.error||"")); if(r.ok) $("#jobcmd").value=""; jobs(); };
+  $("#jobrun").onclick = go; $("#jobcmd").onkeydown = ev=>{ if(ev.key=="Enter") go(); };
+  document.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=async()=>{ await fetch("/api/jobs/cancel",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:b.dataset.cancel})}); jobs(); });
+  const tick = ()=>{ if(tab!="jobs") return; const f=$("#jobcmd");          // do not redraw while a command is being typed
+    if(f && document.activeElement===f && f.value){ window._jt=setTimeout(tick,3000); return; } jobs(); };
+  window._jt = setTimeout(tick, 3000);
 }
 $("#reload").onclick = load;
 window.onhashchange = ()=>{ tab = location.hash.slice(1)||"calendar"; render(); };

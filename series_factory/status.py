@@ -68,6 +68,7 @@ formats [organize|set 087 short]   episode formats (series.json formats) and the
 calendar [--from D] [--weeks 4] [--stock] [--html f.html]   publishing calendar: published / scheduled / planned / gaps
 schedule list|add|move|remove|auto   plan episodes onto slot days (before the scheduler) · views   status shortcuts
 ui                          local screen (calendar, episodes, stock, ideas) on http://127.0.0.1:8765
+jobs add assemble 013 · jobs list · jobs log <id>   queue a long command on the series computer (worker: series ui)
 ideas --type real --status waiting [--character CAT] [--json]   idea list (status is derived)
 idea G-12                   full text + derived status · idea-status G-12 "written (episode 027 'Title')"
 idea-add --type K --group g08 --title .. --text .. [--star] (or --file list.json)   new idea (code is automatic)
@@ -97,6 +98,7 @@ formats [organize|set 087 kisa]   bölüm formatları (series.json formats) ve k
 calendar [--from T] [--weeks 4] [--stock] [--html f.html]   yayın takvimi: yayında / planlı / taslak / boş
 schedule list|add|move|remove|auto   bölümleri kuşak günlerine planla (zamanlayıcıdan önce) · views   durum kısayolları
 ui                          yerel ekran (takvim, bölümler, stok, olaylar): http://127.0.0.1:8765
+jobs add assemble 013 · jobs list · jobs log <id>   uzun komutu seri bilgisayarında sıraya al (çalıştırıcı: series ui)
 ideas --type gercek --status waiting [--character X] [--json]   olay listesi (durum türetilir)
 idea G-12                   tam metin + türetilmiş durum · idea-status G-12 "yazıldı (bölüm 027 'Başlık')"
 idea-add --type K --group g08 --title .. --text .. [--star] (ya da --file liste.json)   yeni olay (kod otomatik)

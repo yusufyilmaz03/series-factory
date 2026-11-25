@@ -52,6 +52,7 @@ Try it on the bundled fictional example: `series --series example_series status`
 | Batch | `series batch 013-018`, `series produce <ep>` | — |
 | Series | `series status`, `series ideas`, `series todo`, `series canon`, `series docs`, cards: `series character / location / sound` | — |
 | Formats | `series formats [organize / set]`, `series carousel <ep>`, `series gemini prepare / collect` (Gemini web) | Pillow for carousels |
+| Jobs | `series jobs add <command>`, `series jobs list / log / cancel` (run commands on the series computer from a phone or sandbox; worker inside `series ui`; [docs](docs/en/jobs.md)) | — |
 | Calendar | `series calendar [--stock] [--html f]`, `series schedule add / move / remove / auto`, `series views`, `series ui` | — |
 | Publish | `series publish list / add / sync`, `series drive prepare` | — |
 
