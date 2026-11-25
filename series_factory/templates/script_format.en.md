@@ -18,6 +18,10 @@
     start_word?: (only for the 2nd and later frames) the single word where the frame starts, EXACTLY as in narration,
     video_prompt?: English, only for an action moment,
     subtitle_pos?: "top" | "middle" — move subtitles up when the main subject sits in the lower half; otherwise omit (bottom),
+    animate?: {"preset": "innocent" | "suspicious" | "eye_roll" | "surprised" | "sleepy" | "no" | "yes" | "smug" | "love" |
+    "idle"} — a small character effect (blinks, gaze, head tilt) for a close or medium shot where the character's open eyes
+    are clearly visible and the face carries the moment; at most 1–2 frames per episode; never a frame where the text
+    says the character does not blink. The eye/head points are found automatically when the frame arrives,
     reads: [short] the 1–3 things the viewer must understand IN ORDER in this frame (see "Timing"),
     hold?: 0.3–1.5 (s) silent screen time after the frame's words; only when an important moment must land,
     transition?: how this frame is entered; "cut" | "fade" | "fadeblack" | "fadewhite" | "dissolve" | "slideleft" |

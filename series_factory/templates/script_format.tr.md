@@ -18,6 +18,10 @@
     start_word?: (yalnızca 2. ve sonraki karelerde) karenin başladığı, narration'da AYNEN geçen tek kelime,
     video_prompt?: yalnızca aksiyon anı için İngilizce,
     subtitle_pos?: "top" | "middle" — karenin ana öznesi alt yarıdaysa altyazı yukarı alınır; yoksa yazma (bottom),
+    animate?: {"preset": "innocent" | "suspicious" | "eye_roll" | "surprised" | "sleepy" | "no" | "yes" | "smug" | "love" |
+    "idle"} — karakterin açık gözlerinin net göründüğü, anı yüzün taşıdığı yakın ya da orta bir karede küçük karakter
+    efekti (göz kırpma, bakış, kafa eğme); bölüm başına en fazla 1–2 kare; metnin "gözünü kırpmadı" dediği karede asla.
+    Göz/kafa noktaları kare gelince otomatik bulunur,
     reads: [kısa] izleyicinin bu karede SIRAYLA anlaması gereken 1–3 şey (bkz. "Zamanlama"),
     hold?: 0.3–1.5 (sn) karenin sözü bitince ekranda sessiz kalma süresi; yalnızca önemli bir an oturmalıysa,
     transition?: bu kareye nasıl girilir; "cut" | "fade" | "fadeblack" | "fadewhite" | "dissolve" | "slideleft" |

@@ -36,4 +36,11 @@ series assemble 004 --cut lively     # hareketli: daha çok çekim
 `subject` dedektörün yerine özneyi verir (karenin pikselleri), `split: false` kareyi tek çekim bırakır, `accent` o kelimede
 küçük bir işaret çıkarır.
 
+Seri varsayılanı: `series.json` → `"video": {"cut": "medium"}` ile `assemble`, `produce` ve `batch` kurguyu kullanır ve
+normal çıktıyı yazar; `--no-cut` tek seferlik klasik görüntü verir.
+
+Bir kare efekti `"animate": {"preset": "..."}` ile ister (senaryoyla yazılır). Göz/kafa noktaları kare gelince bulunur
+(`series animate anchors <bölüm> --write` elle yapar); açık göz bulunamazsa kare normal kurgulanır. Elle girilmiş
+noktalar asla ezilmez.
+
 Efekt maskeleri `<kareler>/_animate/` altında önbellektedir (`SERIES_ANIMATE_CACHE` önbelleği başka yere taşır).

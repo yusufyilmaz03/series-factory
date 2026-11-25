@@ -172,6 +172,17 @@ def plan_shots(shots, frames_dir, plan_frames, words, density, W, H, FPS, P=None
         t0, t1 = f0 / FPS, f1 / FPS
         mid = lambda a, b: tuple((a[j] + b[j]) / 2 for j in range(3))  # noqa: E731
         pos = lambda v: {"pos": shot_position(boxes, w, h, v, W, H, P or {}, fr)}  # noqa: E731
+        if fr.get("animate") and not (fr["animate"].get("anchors") or {}).get("eyes"):
+            # effect asked for, no anchors yet: find them now (no eyes found -> the frame is cut normally)
+            from . import anchors as anc
+            found = anc.find(path, boxes)
+            if found:
+                fr = dict(fr, animate=dict(fr["animate"], anchors=found))
+                plan_frames[sh["frame"]] = fr
+            else:
+                print(T(f"  effect skipped, no eyes found: {sh['frame']}", f"  efekt atlandı, göz bulunamadı: {sh['frame']}"))
+                fr = {k: v for k, v in fr.items() if k != "animate"}
+                plan_frames[sh["frame"]] = fr
         if fr.get("animate"):
             # effect frame: push to the effect framing, then still
             za = min(ANIM_MAX_ZOOM, (fr.get("cut") or {}).get("close", ANIM_MAX_ZOOM))

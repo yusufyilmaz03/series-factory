@@ -37,4 +37,11 @@ series assemble 004 --cut lively     # more shots
 `subject` overrides the detector (pixels of the frame), `split: false` keeps the frame as one shot, `accent` pops a small
 mark in at that word.
 
+Series default: `series.json` → `"video": {"cut": "medium"}` makes `assemble`, `produce` and `batch` use the cut and
+write the normal output; `--no-cut` gives the classic picture for one run.
+
+A frame asks for an effect with `"animate": {"preset": "..."}` (written with the script). Its eye/head anchors are found
+when the frame arrives (`series animate anchors <ep> --write` does it by hand); when no open eyes are found the frame is
+cut normally. Hand-placed anchors are never overwritten.
+
 Effect masks are cached in `<frames>/_animate/` (`SERIES_ANIMATE_CACHE` moves the cache elsewhere).

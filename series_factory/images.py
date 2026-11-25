@@ -184,12 +184,20 @@ def place(ep, d):
 
 
 def after_frame_saved(ep, file):
-    """Hook for every adapter: decide the subtitle position if the optional extra is available."""
+    """Hook for every adapter: decide the subtitle position and, when the plan asks for a character effect on this
+    frame, find its eye/head anchors (both need the optional [subtitles] extra; [animate] is not needed here)."""
+    pos = None
     try:
         from . import subplace
-        return subplace.single_frame(ep, file)
+        pos = subplace.single_frame(ep, file)
     except Exception:
-        return None
+        pass
+    try:
+        from . import animate
+        animate.single_frame(ep, file)
+    except Exception:
+        pass
+    return pos
 
 
 # ---------------------------------------------------------------- gemini adapter

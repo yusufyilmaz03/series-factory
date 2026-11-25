@@ -117,6 +117,11 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None, plan_file=None,
     stops when the plan's length no longer matches the video. plan_file: use this plan instead (A/B tests)."""
     core.check_media_tools()
     c = core.cfg()
+    explicit_cut = cut_style
+    if cut_style is None:
+        cut_style = c.get("video", {}).get("cut") or None     # series default ("calm" | "medium" | "lively")
+    elif cut_style == "none":
+        cut_style = None
     ep = core.episode_dir(episode)
     P = core.profile(core.episode_format(ep))
     W, H, FPS = P["width"], P["height"], P["fps"]
@@ -135,7 +140,9 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None, plan_file=None,
     audio = os.path.join(aud, core.layout("narration") + ".mp3")
     trans = json.load(open(os.path.join(aud, core.layout("words")), encoding="utf-8"))
     sfx_dir = audio_assets or core.series_path("audio_assets")
-    out = out or core.ep_path(ep, "output", os.path.basename(ep) + ("_cut.mp4" if cut_style else ".mp4"))
+    # an explicit --cut writes next to the normal video; the series default writes the normal video
+    out = out or core.ep_path(ep, "output", os.path.basename(ep) + ("_cut.mp4" if explicit_cut and explicit_cut != "none"
+                                                                     else ".mp4"))
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     total_audio = core.duration(audio)
 
@@ -527,6 +534,8 @@ def add_parser(sp):
                    help=T("keep the picture of the existing video, rebuild only the mix", "mevcut videonun görüntüsünü koru, yalnız karışımı yenile"))
     p.add_argument("--video", help=T("source video for --audio-only (default: --out / output/<episode>.mp4)",
                                      "--audio-only için kaynak video (varsayılan: --out / output/<bölüm>.mp4)"))
+    p.add_argument("--no-cut", dest="cut", action="store_const", const="none",
+                   help=T("classic picture even if series.json sets video.cut", "series.json video.cut olsa da klasik görüntü"))
     p.add_argument("--cut", nargs="?", const="medium", choices=["calm", "medium", "lively"],
                    help=T("motion-comic picture: more shots from the same frames (default output <episode>_cut.mp4)",
                           "hareketli çizgi roman görüntüsü: aynı karelerden daha çok çekim (çıktı <bölüm>_cut.mp4)"))

@@ -755,7 +755,57 @@ def cmd_demo(a):
     return 0
 
 
+def auto_anchors(ep, d, frames=None, write=False, quiet=False):
+    """Find anchors for frames that ask for an effect ("animate" with a preset or events) and have no hand-placed
+    anchors. Hand-placed anchors (no "anchors_auto") are never touched. Returns the number written/found."""
+    from . import core, anchors as anc
+    n = 0
+    for s_ in d["scenes"]:
+        for fr in s_["frames"]:
+            an = fr.get("animate")
+            if not an or (frames and fr["file"] not in frames):
+                continue
+            if an.get("anchors") and not an.get("anchors_auto"):
+                continue
+            path = core.ep_path(ep, "frames", fr["file"])
+            if not os.path.exists(path):
+                continue
+            found = anc.find(path)
+            if not quiet:
+                print(f"{fr['file']:<24} " + (json.dumps(found["eyes"]) if found else T("no eyes found", "göz bulunamadı")))
+            if found and write:
+                an["anchors"] = found
+                an["anchors_auto"] = True
+                n += 1
+            elif found:
+                n += 1
+    return n
+
+
+def cmd_anchors(a):
+    from . import core
+    ep = core.episode_dir(a.episode)
+    d = core.load_plan(ep)
+    n = auto_anchors(ep, d, a.frames or None, write=a.write)
+    if a.write and n:
+        core.save_plan(ep, d)
+        print(T(f"anchors written for {n} frames", f"{n} karenin noktaları yazıldı"))
+    return 0
+
+
+def single_frame(ep, file):
+    """Called when a frame is saved: if the plan asks for an effect on it, write its anchors."""
+    from . import core
+    d = core.load_plan(ep)
+    if auto_anchors(ep, d, [file], write=True, quiet=True):
+        core.save_plan(ep, d)
+        return True
+    return False
+
+
 def cmd(a):
+    if a.action == "anchors":
+        return cmd_anchors(a)
     return {"presets": cmd_presets, "grid": cmd_grid, "set": cmd_set, "preview": cmd_preview, "demo": cmd_demo}[a.action](a)
 
 
@@ -763,6 +813,11 @@ def add_parser(sp):
     p = sp.add_parser("animate", help=T("small motions on a still frame, no generative AI (optional extra)",
                                         "durağan karede küçük hareketler, üretken AI yok (opsiyonel)"))
     s = p.add_subparsers(dest="action", required=True, metavar="<action>")
+    q = s.add_parser("anchors", help=T("find eye/head anchors for frames that ask for an effect (needs [subtitles])",
+                                       "efekt istenen karelerde göz/kafa noktalarını bul ([subtitles] gerekir)"))
+    q.add_argument("episode")
+    q.add_argument("frames", nargs="*")
+    q.add_argument("--write", action="store_true", help=T("write them to the plan", "plana yaz"))
     q = s.add_parser("presets", help=T("list motion presets", "hareket paketlerini listele"))
     q.add_argument("--json", action="store_true")
     for name, hlp in (("grid", T("frame with a pixel grid, to read anchors from", "nokta okumak için ızgaralı kare")),
