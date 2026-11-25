@@ -21,6 +21,7 @@ in that series' own `series.json`, never in the code.
 ```bash
 pip install -e .                      # the `series` command; Python 3.10+, Pillow
 pip install -e ".[subtitles]"         # optional: automatic subtitle placement (numpy, onnxruntime)
+pip install -e ".[animate]"           # optional: frame animation without generative AI (opencv, rembg)
 ```
 You also need `ffmpeg`/`ffprobe` with libass (macOS: `brew install ffmpeg-full`).
 
@@ -45,6 +46,8 @@ Try it on the bundled fictional example: `series --series example_series status`
 | Frames | `series frames <ep>` with an image adapter: `gemini`, `manual`, `higgsfield` (optional, `series hf …`) | `GEMINI_API_KEY` for `gemini` |
 | Voice | `series voice episode <ep>` (narration + word timings, lines, sfx, music) | `ELEVENLABS_API_KEY` |
 | Edit | `series assemble <ep>` (Ken Burns, transitions, subtitles, mix, loudness) | ffmpeg |
+| Cut | `series assemble <ep> --cut [calm/medium/lively]` (more shots from the same frames, highlighted words; [docs](docs/en/cut.md)) | ffmpeg (+ `[subtitles]` for subject framing) |
+| Animate | `series animate presets / grid / set / preview / demo` (blinks, gaze, head motion on a still frame; [docs](docs/en/animate.md)) | `[animate]` extra |
 | Check | `series check <ep>`, `series strips <ep>` | — |
 | Batch | `series batch 013-018`, `series produce <ep>` | — |
 | Series | `series status`, `series ideas`, `series todo`, `series canon`, `series docs`, cards: `series character / location / sound` | — |

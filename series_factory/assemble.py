@@ -110,8 +110,10 @@ def line_styles():
     return out
 
 
-def assemble(episode, out=None, no_sfx=False, audio_assets=None, plan_file=None, audio_only=False, video=None):
-    """audio_only: keep the picture of an existing video (video, default: out) and only rebuild the mix;
+def assemble(episode, out=None, no_sfx=False, audio_assets=None, plan_file=None, audio_only=False, video=None,
+             cut_style=None):
+    """cut_style: "calm" | "medium" | "lively" -> motion-comic picture (see cut.py), audio and texts unchanged.
+    audio_only: keep the picture of an existing video (video, default: out) and only rebuild the mix;
     stops when the plan's length no longer matches the video. plan_file: use this plan instead (A/B tests)."""
     core.check_media_tools()
     c = core.cfg()
@@ -133,7 +135,7 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None, plan_file=None,
     audio = os.path.join(aud, core.layout("narration") + ".mp3")
     trans = json.load(open(os.path.join(aud, core.layout("words")), encoding="utf-8"))
     sfx_dir = audio_assets or core.series_path("audio_assets")
-    out = out or core.ep_path(ep, "output", os.path.basename(ep) + ".mp4")
+    out = out or core.ep_path(ep, "output", os.path.basename(ep) + ("_cut.mp4" if cut_style else ".mp4"))
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     total_audio = core.duration(audio)
 
@@ -259,6 +261,8 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None, plan_file=None,
         oa, ob, ns = before[-1] if before else remap[0]
         return ns + (x - oa)
 
+    words_v = [(w["text"], new_time(w["start"]), new_time(w["end"])) for w in words]   # words in video time
+
     # subtitles: break at sentence ends, at most MAXW words;
     # allow MAXW+1 when a single word would be left at the end of a sentence (so an address is not left alone)
     chunks, cur = [], []
@@ -290,7 +294,13 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None, plan_file=None,
             o, shots[n]["transition"] = 0, ("cut", 0.0)
         ovl[n] = o
     vj, aj = os.path.join(tmp, "v.mp4"), os.path.join(tmp, "a.wav")
-    if not audio_only:
+    cut_pos = []
+    if not audio_only and cut_style:
+        from . import cut as cutmod
+        plan_frames = {fr["file"]: fr for s_ in d["scenes"] for fr in s_["frames"]}
+        cut_plan = cutmod.render_video(ep, shots, plan_frames, words_v, vj, W, H, FPS, density=cut_style, P=P)
+        cut_pos = cutmod.positions(cut_plan, FPS)
+    elif not audio_only:
         for n, sh in enumerate(shots):
             cpath = os.path.join(tmp, f"v{n:02d}.mp4")
             img = core.ep_path(ep, "frames", sh["frame"])
@@ -418,6 +428,9 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None, plan_file=None,
     ass = os.path.join(tmp, "subs.ass")
 
     def position(x):
+        for c0, c1, cp in cut_pos:                 # cut mode: the band chosen for that shot's framing
+            if c0 - 0.01 <= x < c1 and cp:
+                return cp
         for sh in shots:
             if sh["t0"] - 0.01 <= x < sh["t1"]:
                 return sh["pos"]
@@ -460,6 +473,9 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None, plan_file=None,
                          else profiles.POSITION_SUFFIX["top"])
         return st
     ev = [(style(st, a, b), a, b, tx) for st, a, b, tx in ev]
+    if cut_style:
+        from . import cut as cutmod
+        ev = cutmod.karaoke(ev, words_v)
     open(ass, "w", encoding="utf-8").write(head + "\n".join(
         f"Dialogue: 0,{ts(a)},{ts(b)},{st},,0,0,0,,{tx}" for st, a, b, tx in ev) + "\n")
     if audio_only:
@@ -496,7 +512,8 @@ def assemble(episode, out=None, no_sfx=False, audio_assets=None, plan_file=None,
 
 
 def cmd(a):
-    assemble(a.episode, a.out, a.no_sfx, a.audio_assets, plan_file=a.plan, audio_only=a.audio_only, video=a.video)
+    assemble(a.episode, a.out, a.no_sfx, a.audio_assets, plan_file=a.plan, audio_only=a.audio_only, video=a.video,
+             cut_style=a.cut)
     return 0
 
 
@@ -510,4 +527,7 @@ def add_parser(sp):
                    help=T("keep the picture of the existing video, rebuild only the mix", "mevcut videonun görüntüsünü koru, yalnız karışımı yenile"))
     p.add_argument("--video", help=T("source video for --audio-only (default: --out / output/<episode>.mp4)",
                                      "--audio-only için kaynak video (varsayılan: --out / output/<bölüm>.mp4)"))
+    p.add_argument("--cut", nargs="?", const="medium", choices=["calm", "medium", "lively"],
+                   help=T("motion-comic picture: more shots from the same frames (default output <episode>_cut.mp4)",
+                          "hareketli çizgi roman görüntüsü: aynı karelerden daha çok çekim (çıktı <bölüm>_cut.mp4)"))
     p.set_defaults(func=cmd)

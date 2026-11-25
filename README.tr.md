@@ -22,6 +22,7 @@ getirildi: bir seriye ait her şey (karakterler, sesler, görsel stil, kurallar,
 ```bash
 pip install -e .                      # `series` komutu; Python 3.10+, Pillow
 pip install -e ".[subtitles]"         # opsiyonel: otomatik altyazı yerleşimi (numpy, onnxruntime)
+pip install -e ".[animate]"           # opsiyonel: üretken AI olmadan kare canlandırma (opencv, rembg)
 ```
 Ayrıca libass destekli `ffmpeg`/`ffprobe` gerekir (macOS: `brew install ffmpeg-full`).
 
@@ -46,6 +47,8 @@ Repodaki uydurma örnek seriyle dene: `series --series example_series status`, `
 | Kareler | `series frames <bölüm>`; görsel adaptörü: `gemini`, `manual`, `higgsfield` (opsiyonel, `series hf …`) | `gemini` için `GEMINI_API_KEY` |
 | Ses | `series voice episode <bölüm>` (anlatım + kelime zamanları, replikler, efekt, müzik) | `ELEVENLABS_API_KEY` |
 | Montaj | `series assemble <bölüm>` (Ken Burns, geçişler, altyazı, miksaj, ses seviyesi) | ffmpeg |
+| Kurgu | `series assemble <bölüm> --cut [calm/medium/lively]` (aynı karelerden daha çok çekim, vurgulu kelimeler; [doküman](docs/tr/kurgu.md)) | ffmpeg (+ özne kadrajı için `[subtitles]`) |
+| Canlandırma | `series animate presets / grid / set / preview / demo` (durağan karede göz kırpma, bakış, kafa hareketi; [doküman](docs/tr/canlandirma.md)) | `[animate]` eki |
 | Kontrol | `series check <bölüm>`, `series strips <bölüm>` | — |
 | Toplu | `series batch 013-018`, `series produce <bölüm>` | — |
 | Seri | `series status`, `series ideas`, `series todo`, `series canon`, `series docs`; kartlar: `series character / location / sound` | — |

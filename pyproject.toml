@@ -18,6 +18,8 @@ dependencies = [
 # The YOLO11n weights are AGPL-3.0 (Ultralytics) and are NOT shipped with this repo;
 # `series subtitles model` explains how to export them once.
 subtitles = ["numpy>=1.24", "onnxruntime>=1.16"]
+# Frame animation without generative AI (`series animate`): warping with OpenCV, character mask with rembg.
+animate = ["numpy>=1.24", "opencv-python-headless>=4.8", "rembg>=2.0.50", "onnxruntime>=1.16"]
 dev = ["pytest>=7"]
 
 [project.scripts]
